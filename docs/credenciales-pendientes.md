@@ -28,7 +28,7 @@ Checklist de cuentas, secretos y variables que **deben completarse manualmente**
 
 | # | Tarea | Dónde | Estado |
 |---|-------|-------|--------|
-| 1 | Activar GitHub Pages con origen **GitHub Actions** | *Settings* → *Pages* → *Source* | ☐ |
+| 1 | Activar GitHub Pages con origen **GitHub Actions** | *Settings* → *Pages* → *Source* | ☑ Hecho |
 | 2 | Crear la variable `API_BASE_URL` con la URL de Render | *Settings* → *Secrets and variables* → *Actions* → *Variables* | ☐ |
 | 3 | Re-ejecutar el workflow **Deploy Frontend to GitHub Pages** | *Actions* | ☐ |
 
