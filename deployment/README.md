@@ -1,5 +1,8 @@
 # Despliegue
 
+> **Despliegue actual:** Firebase Realtime Database (datos) + GitHub Pages (dashboard). Ver [../docs/firebase.md](../docs/firebase.md).
+> El contenido de esta carpeta corresponde al **backend alternativo FastAPI + PostgreSQL**, que se conserva como opción y no está en uso.
+
 ```mermaid
 flowchart LR
     GH[(GitHub<br/>repositorio)] -->|push main| GA[GitHub Actions]

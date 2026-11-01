@@ -13,22 +13,22 @@ flowchart LR
     NTP[("Servidores NTP<br/>pool.ntp.org")]
     E -. "UDP 123<br/>sincronización horaria" .-> NTP
 
-    subgraph CLOUD["☁️ Backend (Render / Railway / Fly.io)"]
-        API["FastAPI<br/>Uvicorn"]
-        ORM["SQLAlchemy 2.0<br/>Pydantic v2"]
-        MIG["Alembic<br/>migraciones"]
-        DB[("PostgreSQL<br/>tabla measurements")]
-        API --> ORM --> DB
-        MIG -. "esquema" .-> DB
+    subgraph CLOUD["☁️ Firebase (plan Spark)"]
+        AUTH["Authentication<br/>cuenta del dispositivo"]
+        DB[("Realtime Database<br/>/measurements · /stats")]
+        RULES["Reglas de seguridad"]
+        RULES -. "valida" .-> DB
     end
 
     subgraph WEB["🖥️ Frontend (GitHub Pages)"]
-        UI["Dashboard HTML5<br/>Vanilla JS + Chart.js"]
+        UI["Dashboard HTML5<br/>Vanilla JS + Chart.js + SheetJS"]
     end
 
-    E -- "HTTPS POST<br/>/api/v1/measurements<br/>X-API-Key" --> API
-    UI -- "HTTPS GET<br/>/api/v1/measurements<br/>/health" --> API
+    E -- "HTTPS signInWithPassword" --> AUTH
+    E -- "HTTPS PATCH cada 30 s<br/>?auth=idToken" --> DB
+    UI -- "HTTPS GET<br/>lectura pública" --> DB
     U(["👤 Usuario"]) --> UI
+    UI -- ".xlsx" --> X["📊 Excel"]
 ```
 
 ## Componentes
@@ -36,7 +36,7 @@ flowchart LR
 | Capa | Componente | Responsabilidad |
 |------|------------|-----------------|
 | Borde | HC-SR04 | Medición de distancia por tiempo de vuelo ultrasónico (2–400 cm). |
-| Borde | ESP32-CAM | Disparo del sensor, marca de tiempo NTP y envío HTTP cada 30 s. |
-| Backend | FastAPI | Validación (Pydantic), autenticación por API Key y exposición REST. |
-| Backend | PostgreSQL | Persistencia histórica de mediciones. |
-| Frontend | Dashboard | Visualización en tiempo casi real, historial y estado del dispositivo. |
+| Borde | ESP32-CAM | Disparo del sensor, marca de tiempo NTP y envío HTTPS cada 30 s. |
+| Nube | Firebase Authentication | Emite el token del dispositivo (1 h). |
+| Nube | Firebase Realtime Database | Persistencia permanente; reglas que solo permiten escribir al dispositivo. |
+| Frontend | Dashboard | Visualización en tiempo casi real, historial, estado y descarga en Excel. |

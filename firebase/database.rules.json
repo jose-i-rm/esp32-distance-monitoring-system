@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "measurements": {
+      ".read": true,
+      ".indexOn": ["epoch"],
+      "$epoch": {
+        ".write": "auth != null && auth.uid === 'jz0Com63Fkam7s5IuOkolcWOdAL2' && !data.exists()",
+        ".validate": "newData.hasChildren(['epoch', 'ts', 'distance_cm', 'received_at']) && $epoch.matches(/^[0-9]{10}$/)",
+        "epoch": { ".validate": "newData.isNumber()" },
+        "ts": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "distance_cm": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
+        "received_at": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "device": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "stats": {
+      ".read": true,
+      ".write": "auth != null && auth.uid === 'jz0Com63Fkam7s5IuOkolcWOdAL2'",
+      "count": { ".validate": "newData.isNumber()" },
+      "latest": {
+        ".validate": "newData.hasChildren(['epoch', 'ts', 'distance_cm', 'received_at'])"
+      },
+      "$other": { ".validate": false }
+    }
+  }
+}

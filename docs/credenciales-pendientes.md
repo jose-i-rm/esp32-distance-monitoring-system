@@ -1,54 +1,45 @@
-# Credenciales y configuración pendientes
+# Credenciales y configuración
 
-Checklist de cuentas, secretos y variables que **deben completarse manualmente**. Ningún secreto se versiona en el repositorio.
+Estado de cuentas, secretos y variables del sistema. **Ningún secreto se versiona** en el repositorio.
 
-## 1. Render (backend + PostgreSQL)
+## 1. Firebase (backend)
 
-| # | Tarea | Dónde | Estado |
-|---|-------|-------|--------|
-| 1 | Crear cuenta en Render e iniciar sesión con GitHub | https://dashboard.render.com | ☐ |
-| 2 | Autorizar a Render el acceso al repositorio | Render → *Account settings* → GitHub | ☐ |
-| 3 | Crear el Blueprint desde `render.yaml` | Render → *New* → *Blueprint* | ☐ |
-| 4 | Copiar el valor generado de `DEVICE_API_KEY` | Servicio `esp32-distance-api` → *Environment* | ☐ |
-| 5 | Verificar `CORS_ORIGINS` = `https://jose-i-rm.github.io` | Servicio → *Environment* | ☐ |
-| 6 | Anotar la URL pública (`https://esp32-distance-api.onrender.com` o similar) | Servicio → encabezado | ☐ |
-| 7 | Programar un respaldo antes de que expire la BD gratuita (30 días) | Ver [base-de-datos.md](./base-de-datos.md#respaldo) | ☐ |
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Proyecto `esp32-distance-jirm-450f1` (plan Spark gratuito) | ☑ Hecho |
+| 2 | Realtime Database `esp32-distance-jirm-450f1-default-rtdb` (us-central1) | ☑ Hecho |
+| 3 | Authentication: proveedor correo/contraseña habilitado, registro público deshabilitado | ☑ Hecho |
+| 4 | Cuenta del dispositivo `esp32-cam-01@esp32-distance.iot` | ☑ Hecho |
+| 5 | Reglas de seguridad desplegadas (`firebase deploy --only database`) | ☑ Hecho |
+| 6 | App web registrada (API key web) | ☑ Hecho |
 
-### Variables del servicio web
+Detalle: [firebase.md](./firebase.md).
 
-| Variable | Valor | Origen |
-|----------|-------|--------|
-| `DATABASE_URL` | Cadena de conexión interna | Automático (`fromDatabase`) |
-| `DEVICE_API_KEY` | Cadena aleatoria | Automático (`generateValue`) |
-| `CORS_ORIGINS` | `https://jose-i-rm.github.io` | `render.yaml` |
-| `ENVIRONMENT` | `production` | `render.yaml` |
-| `PYTHON_VERSION` | `3.12.8` | `render.yaml` |
+## 2. GitHub Pages (frontend)
 
-## 2. GitHub (frontend)
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | GitHub Pages con origen **GitHub Actions** | ☑ Hecho |
+| 2 | URL de Firebase en `frontend/js/config.js` (opcional: variable de repositorio `FIREBASE_DB_URL`) | ☑ Hecho |
 
-| # | Tarea | Dónde | Estado |
-|---|-------|-------|--------|
-| 1 | Activar GitHub Pages con origen **GitHub Actions** | *Settings* → *Pages* → *Source* | ☑ Hecho |
-| 2 | Crear la variable `API_BASE_URL` con la URL de Render | *Settings* → *Secrets and variables* → *Actions* → *Variables* | ☐ |
-| 3 | Re-ejecutar el workflow **Deploy Frontend to GitHub Pages** | *Actions* | ☐ |
+Sitio: https://jose-i-rm.github.io/esp32-distance-monitoring-system/
 
 ## 3. Firmware (ESP32-CAM)
 
-| Parámetro | Valor |
-|-----------|-------|
-| URL de la API | `https://<servicio>.onrender.com/api/v1/measurements` |
-| Cabecera `X-API-Key` | Valor de `DEVICE_API_KEY` de Render |
-| Credenciales WiFi | Red 2.4 GHz doméstica |
+Los valores reales se guardan en `secrets.h` junto al sketch (excluido de Git):
 
-Mantenga estos valores en un archivo `config.h`/`secrets.h` excluido de Git.
+| Constante | Origen |
+|-----------|--------|
+| `WIFI_SSID`, `WIFI_PASSWORD` | Red WiFi 2.4 GHz |
+| `FIREBASE_API_KEY` | Consola Firebase → Configuración del proyecto → General |
+| `FIREBASE_DB_URL` | `https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com` |
+| `DEVICE_EMAIL`, `DEVICE_PASSWORD` | Cuenta del dispositivo (Authentication → Usuarios) |
 
-## 4. Alternativas (opcional)
+Si se pierde la contraseña del dispositivo, restablézcala desde la consola (ver [firebase.md](./firebase.md#rotar-la-contraseña-del-dispositivo)).
 
-| Proveedor | Credencial / configuración pendiente |
-|-----------|--------------------------------------|
-| Railway | Cuenta, proyecto con plugin PostgreSQL, variables `DEVICE_API_KEY` y `CORS_ORIGINS`. |
-| Fly.io | `flyctl auth login`, `fly postgres create`, `fly secrets set DEVICE_API_KEY=...`. |
-| Neon / Supabase | Cadena de conexión PostgreSQL para usar como `DATABASE_URL` permanente. |
+## 4. Backend alternativo (opcional, no usado)
+
+El backend FastAPI + PostgreSQL (`backend/`, `render.yaml`, `deployment/`) se conserva como alternativa. Si se quisiera usar: cuenta de Render, Blueprint `render.yaml`, `DEVICE_API_KEY` y `CORS_ORIGINS`. Ver [../deployment/README.md](../deployment/README.md).
 
 ## 5. Futuras integraciones
 
@@ -56,10 +47,4 @@ Mantenga estos valores en un archivo `config.h`/`secrets.h` excluido de Git.
 |----------|-----------|
 | Hugging Face | `HF_API_TOKEN` (*Settings* → *Access Tokens*, rol *read*). |
 | Broker MQTT | Host, puerto 8883, usuario y contraseña por dispositivo. |
-| Almacenamiento de imágenes | Bucket y claves de acceso (R2 / S3 / Supabase). |
-
-## Generar una API Key manualmente
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+| Almacenamiento de imágenes | Firebase Storage u otro bucket. |

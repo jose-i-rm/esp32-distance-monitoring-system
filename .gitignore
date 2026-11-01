@@ -21,6 +21,10 @@ firmware/**/build/
 # Fly.io (copia local)
 backend/fly.toml
 
+# Firebase CLI
+firebase-debug.log
+.firebase/
+
 # Editores / SO
 .vscode/
 .idea/

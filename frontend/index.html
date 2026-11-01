@@ -8,6 +8,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
   <script src="js/app.js" defer></script>
@@ -18,11 +19,11 @@
       <img src="assets/favicon.svg" alt="" width="36" height="36">
       <div>
         <h1>ESP32 Distance Monitoring System</h1>
-        <p class="subtitle">ESP32-CAM · HC-SR04 · NTP · WiFi</p>
+        <p class="subtitle">ESP32-CAM · HC-SR04 · NTP · WiFi · Firebase</p>
       </div>
     </div>
     <div class="topbar-actions">
-      <span id="connection-badge" class="badge badge-unknown" title="Estado de conexión con la API">
+      <span id="connection-badge" class="badge badge-unknown" title="Estado de conexión con Firebase">
         <span class="dot"></span><span class="label">Conectando…</span>
       </span>
       <button id="settings-toggle" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="settings-panel">⚙ Configuración</button>
@@ -32,8 +33,8 @@
   <section id="settings-panel" class="settings" hidden>
     <form id="settings-form" class="settings-form">
       <label>
-        URL de la API
-        <input id="api-url-input" type="url" placeholder="https://esp32-distance-api.onrender.com" required>
+        URL de Firebase Realtime Database
+        <input id="db-url-input" type="url" placeholder="https://<proyecto>-default-rtdb.firebaseio.com" required>
       </label>
       <label>
         Refresco (s)
@@ -103,12 +104,17 @@
     <section class="panel">
       <div class="panel-header">
         <h2>Historial</h2>
-        <button id="export-btn" class="btn btn-ghost" type="button">⬇ Exportar CSV</button>
+        <form id="export-form" class="export-form" aria-label="Exportar lecturas a Excel">
+          <label>Desde <input id="export-from" type="date"></label>
+          <label>Hasta <input id="export-to" type="date"></label>
+          <button id="export-btn" class="btn btn-primary" type="submit" title="Sin fechas se descarga todo el histórico">⬇ Descargar Excel</button>
+        </form>
       </div>
+      <p class="hint export-hint">Excel (.xlsx) con todas las lecturas guardadas en Firebase. Deje las fechas vacías para descargar el histórico completo.</p>
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr><th>#</th><th>Fecha y hora (lectura)</th><th>Distancia (cm)</th><th>Recibido</th></tr>
+            <tr><th>#</th><th>Fecha y hora (lectura)</th><th>Distancia (cm)</th><th>Recibido en Firebase</th></tr>
           </thead>
           <tbody id="history-body">
             <tr><td colspan="4" class="empty">Sin datos</td></tr>
@@ -119,7 +125,7 @@
   </main>
 
   <footer class="footer">
-    <p>ESP32 Distance Monitoring System · FastAPI · PostgreSQL · Chart.js</p>
+    <p>ESP32 Distance Monitoring System · Firebase Realtime Database · Chart.js · SheetJS</p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

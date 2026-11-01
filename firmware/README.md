@@ -1,80 +1,85 @@
 # Firmware (ESP32-CAM)
 
-> El firmware de la ESP32-CAM **ya está implementado** por fuera de este alcance (WiFi + NTP + HC-SR04, lectura cada 30 s). Esta carpeta documenta el **contrato de integración** que debe cumplir para enviar datos al backend. Puede versionar aquí el código fuente existente (Arduino IDE y/o PlatformIO).
+Sketch Arduino para la **ESP32-CAM AI Thinker** con sensor **HC-SR04**. Funciones:
 
-## Estructura sugerida
+- Mide la distancia cada **30 s** (TRIG GPIO13, ECHO GPIO14).
+- Sincroniza la hora con **NTP** (UTC-5).
+- Envía cada lectura por **HTTPS** a **Firebase Realtime Database**, autenticado con la cuenta del dispositivo en Firebase Authentication.
+
+No requiere librerías externas: usa `WiFi`, `WiFiClientSecure` y `HTTPClient` del core ESP32 de Espressif (probado con **3.3.12**).
+
+## Estructura
 
 ```
 firmware/
-├── README.md                      # Este documento (contrato de integración)
-├── arduino/<nombre_sketch>/       # Sketch actual (.ino)
-└── platformio/                    # Proyecto PlatformIO (opcional)
+└── esp32_distance_firebase/
+    ├── esp32_distance_firebase.ino   # Sketch
+    ├── secrets.example.h             # Plantilla de credenciales
+    └── secrets.h                     # Credenciales reales (NO se versiona)
 ```
 
-> No suba credenciales WiFi ni la API Key: los archivos `config.h` y `secrets.h` están excluidos en `.gitignore`.
+## Cargar en la placa
 
-## Contrato con el backend
+1. Copie `secrets.example.h` como `secrets.h` y complete:
 
-| Elemento | Valor |
-|----------|-------|
-| Método | `POST` |
-| URL local | `http://<IP_DEL_PC>:8000/api/v1/measurements` |
-| URL producción | `https://<servicio>.onrender.com/api/v1/measurements` |
-| Cabeceras | `Content-Type: application/json` · `X-API-Key: <DEVICE_API_KEY>` |
-| Respuesta exitosa | `201 Created` |
+   | Constante | Valor |
+   |-----------|-------|
+   | `WIFI_SSID` / `WIFI_PASSWORD` | Red WiFi 2.4 GHz |
+   | `FIREBASE_API_KEY` | Consola Firebase → Configuración del proyecto → General → *Clave de API web* |
+   | `FIREBASE_DB_URL` | `https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com` |
+   | `DEVICE_EMAIL` / `DEVICE_PASSWORD` | Cuenta del dispositivo en Firebase Authentication |
+   | `DEVICE_ID` | `esp32-cam-01` |
 
-### Cuerpo JSON
+2. Arduino IDE → Placa **AI Thinker ESP32-CAM** → **Subir** (con el ESP32-CAM-MB).
+3. Monitor serie a **115200** baudios.
+
+Compilación por línea de comandos (opcional):
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32cam firmware/esp32_distance_firebase
+```
+
+## Salida esperada en el monitor serie
+
+```
+WiFi conectado
+IP: 192.168.1.50
+Esperando sincronizacion NTP...
+Hora sincronizada
+Firebase Auth: sesion iniciada
+2026-11-01 11:08:55 | Distancia: 214.05 cm
+  -> Guardado en Firebase
+2026-11-01 11:09:25 | Distancia: 4.92 cm
+  -> Guardado en Firebase
+```
+
+## Comportamiento
+
+| Situación | Acción del firmware |
+|-----------|---------------------|
+| Sin eco del sensor (fuera de rango > ~5 m o desconectado) | Imprime aviso y **no envía** la lectura. |
+| WiFi caído | Reintenta conectar antes de cada envío; la lectura de ese ciclo se pierde si no hay conexión. |
+| Token expirado (1 h) | Se renueva automáticamente 5 min antes; ante un `401` inicia sesión de nuevo y reintenta una vez. |
+| Temporización | Basada en `millis()`: una lectura cada 30 s aunque el envío HTTPS tarde 1–3 s. |
+
+## Contrato de datos
+
+Una sola petición `PATCH {FIREBASE_DB_URL}/.json?auth=<idToken>` (escritura atómica multiruta):
 
 ```json
-{ "timestamp": "2026-11-01T11:08:55-05:00", "distance_cm": 214.05 }
-```
-
-| Campo | Tipo | Reglas |
-|-------|------|--------|
-| `timestamp` | string ISO 8601 | Con zona horaria (`Z` o `-05:00`). Si se omite la zona, el backend asume **UTC**. |
-| `distance_cm` | número | Entre 0 y 1000. Se almacena con 2 decimales. |
-
-### Equivalencia con la salida serie actual
-
-| Monitor serie | JSON a enviar |
-|---------------|---------------|
-| `2026-11-01 11:08:55 \| Distancia: 214.05 cm` | `{"timestamp":"2026-11-01T11:08:55-05:00","distance_cm":214.05}` |
-| `2026-11-01 11:09:25 \| Distancia: 4.92 cm` | `{"timestamp":"2026-11-01T11:09:25-05:00","distance_cm":4.92}` |
-
-## Fragmento de referencia para el envío HTTP
-
-Si el firmware actual solo imprime en el monitor serie, este fragmento muestra cómo publicar la lectura usando las librerías estándar del core ESP32 (`HTTPClient`, `WiFiClientSecure`):
-
-```cpp
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
-
-const char* API_URL = "https://<servicio>.onrender.com/api/v1/measurements";
-const char* DEVICE_API_KEY = "<DEVICE_API_KEY>";
-
-// timestamp: "2026-11-01T11:08:55-05:00" (strftime "%Y-%m-%dT%H:%M:%S-05:00" o UTC con "Z")
-bool enviarMedicion(const char* timestamp, float distanciaCm) {
-  WiFiClientSecure client;
-  client.setInsecure();               // Para validar TLS use client.setCACert(ROOT_CA)
-  HTTPClient http;
-  http.begin(client, API_URL);        // Para HTTP local use un WiFiClient normal
-  http.setTimeout(20000);             // Render gratuito puede tardar ~50 s en despertar
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("X-API-Key", DEVICE_API_KEY);
-
-  char body[96];
-  snprintf(body, sizeof(body), "{\"timestamp\":\"%s\",\"distance_cm\":%.2f}", timestamp, distanciaCm);
-  int code = http.POST(body);
-  http.end();
-  return code == 201;
+{
+  "measurements/1793553552": {
+    "epoch": 1793553552,
+    "ts": "2026-11-01T11:08:55-05:00",
+    "distance_cm": 214.05,
+    "received_at": { ".sv": "timestamp" },
+    "device": "esp32-cam-01"
+  },
+  "stats/latest": { "...": "mismo objeto" },
+  "stats/count": { ".sv": { "increment": 1 } }
 }
 ```
 
-## Prueba sin hardware
+Las reglas de Firebase rechazan escrituras de otros usuarios, valores fuera de rango y sobrescrituras. Ver [../docs/firebase.md](../docs/firebase.md).
 
-Puede simular el dispositivo con `curl` (ver [../api/examples/curl.md](../api/examples/curl.md)) o con el simulador incluido:
-
-```bash
-cd backend
-python scripts/simulate_device.py --url http://localhost:8000 --api-key <DEVICE_API_KEY>
-```
+> **TLS:** el sketch usa `client.setInsecure()` (cifra el tráfico pero no valida el certificado), suficiente para uso académico. Para producción, cargue el certificado raíz de Google con `client.setCACert(...)`.

@@ -2,15 +2,18 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEYS = { apiUrl: "esp32dms.apiUrl", refresh: "esp32dms.refresh", limit: "esp32dms.limit" };
+  const STORAGE_KEYS = { dbUrl: "esp32dms.dbUrl", refresh: "esp32dms.refresh", limit: "esp32dms.limit" };
   const defaults = window.APP_CONFIG;
 
   const state = {
-    apiUrl: localStorage.getItem(STORAGE_KEYS.apiUrl) || defaults.API_BASE_URL,
+    dbUrl: localStorage.getItem(STORAGE_KEYS.dbUrl) || defaults.FIREBASE_DB_URL,
     refreshSeconds: Number(localStorage.getItem(STORAGE_KEYS.refresh)) || defaults.REFRESH_INTERVAL_SECONDS,
     limit: Number(localStorage.getItem(STORAGE_KEYS.limit)) || 50,
     measurements: [],
     latest: null,
+    stats: null,
+    total: 0,
+    exporting: false,
     timer: null,
     chart: null,
     loading: false,
@@ -34,12 +37,15 @@
     historyBody: $("history-body"),
     limitSelect: $("limit-select"),
     refreshBtn: $("refresh-btn"),
+    exportForm: $("export-form"),
     exportBtn: $("export-btn"),
+    exportFrom: $("export-from"),
+    exportTo: $("export-to"),
     settingsToggle: $("settings-toggle"),
     settingsPanel: $("settings-panel"),
     settingsForm: $("settings-form"),
     settingsReset: $("settings-reset"),
-    apiUrlInput: $("api-url-input"),
+    dbUrlInput: $("db-url-input"),
     refreshInput: $("refresh-input"),
     toast: $("toast"),
   };
@@ -145,9 +151,11 @@
       return;
     }
     const fragment = document.createDocumentFragment();
-    state.measurements.forEach((m) => {
+    const top = Math.max(state.total, state.measurements.length);
+    state.measurements.forEach((m, index) => {
       const row = document.createElement("tr");
-      [m.id, formatDate(m.timestamp), formatCm(m.distance_cm), formatDate(m.created_at)].forEach((value) => {
+      const received = m.created_at ? formatDate(m.created_at) : "--";
+      [top - index, formatDate(m.timestamp), formatCm(m.distance_cm), received].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value;
         row.appendChild(cell);
@@ -216,33 +224,36 @@
 
   async function checkHealth() {
     try {
-      const res = await ApiClient.health(state.apiUrl);
-      if (res.ok && res.body?.status === "ok") {
-        setIndicator(el.apiStatus, "ok", "API conectada");
+      const res = await FirebaseClient.stats(state.dbUrl);
+      if (res.ok) {
+        state.stats = res.body;
+        setIndicator(el.apiStatus, "ok", "Firebase conectado");
         setIndicator(el.connectionBadge, "ok", "Conectado");
-        el.apiDetail.textContent = `Latencia ${res.latencyMs} ms · v${res.body.version}`;
+        el.apiDetail.textContent = `Realtime Database · latencia ${res.latencyMs} ms`;
       } else {
-        setIndicator(el.apiStatus, "warn", "API degradada");
+        setIndicator(el.apiStatus, "warn", "Firebase con errores");
         setIndicator(el.connectionBadge, "warn", "Degradado");
-        el.apiDetail.textContent = `Base de datos: ${res.body?.database ?? "desconocida"} (HTTP ${res.status})`;
+        el.apiDetail.textContent = `${res.body?.error ?? "Error"} (HTTP ${res.status})`;
       }
       return res.ok;
     } catch (error) {
       setIndicator(el.apiStatus, "error", "Sin conexión");
       setIndicator(el.connectionBadge, "error", "Desconectado");
       el.apiDetail.textContent = error.name === "AbortError"
-        ? "Tiempo de espera agotado (el servidor puede estar iniciando)"
-        : "No fue posible contactar la API";
+        ? "Tiempo de espera agotado"
+        : "No fue posible contactar Firebase";
       return false;
     }
   }
 
   async function loadMeasurements() {
-    const res = await ApiClient.list(state.apiUrl, state.limit);
+    const res = await FirebaseClient.recent(state.dbUrl, state.limit);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    state.measurements = res.body.items;
-    state.latest = res.body.items[0] || null;
-    return res.body.total;
+    state.measurements = res.items;
+    const latest = state.stats?.latest;
+    state.latest = latest ? FirebaseClient.normalize(String(latest.epoch), latest) : res.items[0] || null;
+    state.total = Math.max(Number(state.stats?.count) || 0, res.items.length);
+    return state.total;
   }
 
   async function refresh() {
@@ -274,20 +285,79 @@
 
   /* ---------- Acciones ---------- */
 
-  function exportCsv() {
-    if (!state.measurements.length) {
-      showToast("No hay datos para exportar");
+  // "2026-11-01T11:08:55-05:00" -> "2026-11-01 11:08:55" (hora local del dispositivo).
+  const deviceTime = (iso) => (iso ? iso.slice(0, 19).replace("T", " ") : "");
+
+  const toEpoch = (dateStr, endOfDay) =>
+    dateStr ? Math.floor(new Date(`${dateStr}T${endOfDay ? "23:59:59" : "00:00:00"}`).getTime() / 1000) : null;
+
+  async function exportExcel(event) {
+    event.preventDefault();
+    if (state.exporting) return;
+    if (typeof XLSX === "undefined") {
+      showToast("No se pudo cargar la librería de Excel. Revise su conexión.", true);
       return;
     }
-    const rows = [["id", "timestamp", "distance_cm", "created_at"],
-      ...state.measurements.map((m) => [m.id, m.timestamp, m.distance_cm, m.created_at])];
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `mediciones_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+
+    const from = el.exportFrom.value;
+    const to = el.exportTo.value;
+    if (from && to && from > to) {
+      showToast("La fecha inicial debe ser anterior a la final", true);
+      return;
+    }
+
+    state.exporting = true;
+    el.exportBtn.disabled = true;
+    el.exportBtn.textContent = "Generando…";
+    try {
+      const res = await FirebaseClient.range(state.dbUrl, toEpoch(from, false), toEpoch(to, true));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.items.length) {
+        showToast("No hay lecturas en el rango seleccionado");
+        return;
+      }
+
+      const items = [...res.items].reverse();
+      const rows = items.map((m, i) => ({
+        "N°": i + 1,
+        "Fecha y hora (lectura)": deviceTime(m.timestamp),
+        "Distancia (cm)": Number(m.distance_cm.toFixed(2)),
+        "Recibido en Firebase": m.created_at ? formatDate(m.created_at) : "",
+        "Dispositivo": m.device,
+        "Epoch (UTC)": m.epoch,
+      }));
+      const values = items.map((m) => m.distance_cm);
+      const sum = values.reduce((a, b) => a + b, 0);
+      const summary = [
+        ["Resumen de lecturas", ""],
+        ["Desde", deviceTime(items[0].timestamp)],
+        ["Hasta", deviceTime(items[items.length - 1].timestamp)],
+        ["Registros", items.length],
+        ["Mínimo (cm)", Number(Math.min(...values).toFixed(2))],
+        ["Máximo (cm)", Number(Math.max(...values).toFixed(2))],
+        ["Promedio (cm)", Number((sum / values.length).toFixed(2))],
+        ["Generado", formatDate(new Date().toISOString())],
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const wsData = XLSX.utils.json_to_sheet(rows);
+      wsData["!cols"] = [{ wch: 8 }, { wch: 22 }, { wch: 15 }, { wch: 22 }, { wch: 15 }, { wch: 13 }];
+      wsData["!autofilter"] = { ref: wsData["!ref"] };
+      const wsSummary = XLSX.utils.aoa_to_sheet(summary);
+      wsSummary["!cols"] = [{ wch: 18 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, wsData, "Lecturas");
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen");
+
+      const suffix = from || to ? `${from || "inicio"}_a_${to || "hoy"}` : "completo";
+      XLSX.writeFile(wb, `lecturas_distancia_${suffix}.xlsx`);
+      showToast(`Excel generado con ${items.length} lecturas`);
+    } catch (error) {
+      showToast(`Error al exportar: ${error.message}`, true);
+    } finally {
+      state.exporting = false;
+      el.exportBtn.disabled = false;
+      el.exportBtn.textContent = "⬇ Descargar Excel";
+    }
   }
 
   function bindEvents() {
@@ -298,21 +368,21 @@
       refresh();
     });
     el.refreshBtn.addEventListener("click", refresh);
-    el.exportBtn.addEventListener("click", exportCsv);
+    el.exportForm.addEventListener("submit", exportExcel);
 
     el.settingsToggle.addEventListener("click", () => {
       const open = el.settingsPanel.hidden;
       el.settingsPanel.hidden = !open;
       el.settingsToggle.setAttribute("aria-expanded", String(open));
-      el.apiUrlInput.value = state.apiUrl;
+      el.dbUrlInput.value = state.dbUrl;
       el.refreshInput.value = state.refreshSeconds;
     });
 
     el.settingsForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      state.apiUrl = el.apiUrlInput.value.trim().replace(/\/+$/, "");
+      state.dbUrl = el.dbUrlInput.value.trim().replace(/\/+$/, "");
       state.refreshSeconds = Math.max(5, Number(el.refreshInput.value) || defaults.REFRESH_INTERVAL_SECONDS);
-      localStorage.setItem(STORAGE_KEYS.apiUrl, state.apiUrl);
+      localStorage.setItem(STORAGE_KEYS.dbUrl, state.dbUrl);
       localStorage.setItem(STORAGE_KEYS.refresh, state.refreshSeconds);
       showToast("Configuración guardada");
       schedule();
@@ -321,9 +391,9 @@
 
     el.settingsReset.addEventListener("click", () => {
       Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
-      state.apiUrl = defaults.API_BASE_URL;
+      state.dbUrl = defaults.FIREBASE_DB_URL;
       state.refreshSeconds = defaults.REFRESH_INTERVAL_SECONDS;
-      el.apiUrlInput.value = state.apiUrl;
+      el.dbUrlInput.value = state.dbUrl;
       el.refreshInput.value = state.refreshSeconds;
       showToast("Configuración restablecida");
       schedule();

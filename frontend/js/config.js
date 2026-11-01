@@ -1,11 +1,10 @@
 /*
  * Configuración del dashboard.
- * En GitHub Pages este archivo se regenera en el workflow usando la variable
- * de repositorio API_BASE_URL (Settings > Secrets and variables > Actions > Variables).
- * El usuario también puede cambiar la URL desde el panel "Configuración" (se guarda en localStorage).
+ * Los datos se leen de Firebase Realtime Database (lectura pública, escritura solo del ESP32).
+ * El usuario puede cambiar la URL desde el panel "Configuración" (se guarda en localStorage).
  */
 window.APP_CONFIG = {
-  API_BASE_URL: "http://localhost:8000",
+  FIREBASE_DB_URL: "https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com",
   REFRESH_INTERVAL_SECONDS: 15,
   // Intervalo de envío del firmware (30 s). Si no llegan datos en 3 intervalos el dispositivo se marca offline.
   DEVICE_INTERVAL_SECONDS: 30,
