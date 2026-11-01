@@ -1,0 +1,44 @@
+name: esp32-distance-monitoring
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: esp32
+      POSTGRES_PASSWORD: esp32
+      POSTGRES_DB: esp32_monitoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U esp32 -d esp32_monitoring"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../../backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://esp32:esp32@db:5432/esp32_monitoring
+      DEVICE_API_KEY: ${DEVICE_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5500}
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: nginx:1.27-alpine
+    volumes:
+      - ../../frontend:/usr/share/nginx/html:ro
+    ports:
+      - "5500:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

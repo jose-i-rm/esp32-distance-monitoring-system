@@ -1,0 +1,44 @@
+### Variables (extensión REST Client de VS Code)
+@baseUrl = http://localhost:8000
+@apiKey = <DEVICE_API_KEY>
+
+### Estado del servicio
+GET {{baseUrl}}/health
+
+### Registrar medición
+POST {{baseUrl}}/api/v1/measurements
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "timestamp": "2026-11-01T11:08:55-05:00",
+  "distance_cm": 214.05
+}
+
+### Registrar medición en UTC
+POST {{baseUrl}}/api/v1/measurements
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "timestamp": "2026-11-01T16:09:25Z",
+  "distance_cm": 4.92
+}
+
+### Sin API Key (debe responder 401)
+POST {{baseUrl}}/api/v1/measurements
+Content-Type: application/json
+
+{
+  "timestamp": "2026-11-01T16:09:25Z",
+  "distance_cm": 4.92
+}
+
+### Última medición
+GET {{baseUrl}}/api/v1/measurements/latest
+
+### Historial
+GET {{baseUrl}}/api/v1/measurements?limit=50&offset=0
+
+### Historial filtrado por fecha
+GET {{baseUrl}}/api/v1/measurements?start=2026-11-01T00:00:00Z&end=2026-11-02T00:00:00Z

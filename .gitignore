@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+*.db
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Firmware: credenciales y artefactos de compilación
+firmware/**/config.h
+firmware/**/secrets.h
+firmware/**/.pio/
+firmware/**/build/
+
+# Fly.io (copia local)
+backend/fly.toml
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard de monitoreo de distancias en tiempo real con ESP32-CAM y HC-SR04.">
+  <title>ESP32 Distance Monitoring System</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/favicon.svg" alt="" width="36" height="36">
+      <div>
+        <h1>ESP32 Distance Monitoring System</h1>
+        <p class="subtitle">ESP32-CAM · HC-SR04 · NTP · WiFi</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="connection-badge" class="badge badge-unknown" title="Estado de conexión con la API">
+        <span class="dot"></span><span class="label">Conectando…</span>
+      </span>
+      <button id="settings-toggle" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="settings-panel">⚙ Configuración</button>
+    </div>
+  </header>
+
+  <section id="settings-panel" class="settings" hidden>
+    <form id="settings-form" class="settings-form">
+      <label>
+        URL de la API
+        <input id="api-url-input" type="url" placeholder="https://esp32-distance-api.onrender.com" required>
+      </label>
+      <label>
+        Refresco (s)
+        <input id="refresh-input" type="number" min="5" max="300" step="1" required>
+      </label>
+      <div class="settings-buttons">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button id="settings-reset" class="btn btn-ghost" type="button">Restablecer</button>
+      </div>
+    </form>
+  </section>
+
+  <main class="container">
+    <section class="cards" aria-label="Indicadores principales">
+      <article class="card card-highlight">
+        <h2>Distancia actual</h2>
+        <p class="metric"><span id="current-distance">--</span><span class="unit">cm</span></p>
+        <div class="gauge" aria-hidden="true"><div id="distance-gauge" class="gauge-fill"></div></div>
+        <p class="hint">Rango útil HC-SR04: 2 – 400 cm</p>
+      </article>
+
+      <article class="card">
+        <h2>Última lectura</h2>
+        <p id="last-reading-time" class="metric-sm">--</p>
+        <p id="last-reading-relative" class="hint">Sin datos</p>
+      </article>
+
+      <article class="card">
+        <h2>Estado del dispositivo</h2>
+        <p id="device-status" class="status status-unknown"><span class="dot"></span><span class="label">Desconocido</span></p>
+        <p id="device-status-detail" class="hint">Esperando lecturas de la ESP32-CAM</p>
+      </article>
+
+      <article class="card">
+        <h2>Estado de conexión</h2>
+        <p id="api-status" class="status status-unknown"><span class="dot"></span><span class="label">Verificando</span></p>
+        <p id="api-status-detail" class="hint">--</p>
+      </article>
+    </section>
+
+    <section class="stats" aria-label="Estadísticas del periodo">
+      <div class="stat"><span class="stat-label">Mínimo</span><span id="stat-min" class="stat-value">--</span></div>
+      <div class="stat"><span class="stat-label">Máximo</span><span id="stat-max" class="stat-value">--</span></div>
+      <div class="stat"><span class="stat-label">Promedio</span><span id="stat-avg" class="stat-value">--</span></div>
+      <div class="stat"><span class="stat-label">Registros</span><span id="stat-total" class="stat-value">--</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Gráfico temporal</h2>
+        <div class="panel-controls">
+          <label for="limit-select" class="sr-only">Cantidad de lecturas</label>
+          <select id="limit-select">
+            <option value="20">Últimas 20</option>
+            <option value="50" selected>Últimas 50</option>
+            <option value="120">Últimas 120 (1 h)</option>
+            <option value="500">Últimas 500</option>
+          </select>
+          <button id="refresh-btn" class="btn btn-ghost" type="button">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="distance-chart" aria-label="Gráfico de distancia en el tiempo" role="img"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Historial</h2>
+        <button id="export-btn" class="btn btn-ghost" type="button">⬇ Exportar CSV</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Fecha y hora (lectura)</th><th>Distancia (cm)</th><th>Recibido</th></tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="4" class="empty">Sin datos</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>ESP32 Distance Monitoring System · FastAPI · PostgreSQL · Chart.js</p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

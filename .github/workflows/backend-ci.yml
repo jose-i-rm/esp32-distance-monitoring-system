@@ -1,0 +1,68 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: esp32
+          POSTGRES_PASSWORD: esp32
+          POSTGRES_DB: esp32_monitoring
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U esp32"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Pruebas unitarias
+        run: pytest -q
+
+      - name: Migraciones contra PostgreSQL
+        env:
+          DATABASE_URL: postgresql://esp32:esp32@localhost:5432/esp32_monitoring
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Prueba de humo contra PostgreSQL
+        env:
+          DATABASE_URL: postgresql://esp32:esp32@localhost:5432/esp32_monitoring
+          DEVICE_API_KEY: ci-key
+        run: |
+          uvicorn app.main:app --port 8000 &
+          sleep 5
+          curl -sf http://localhost:8000/health
+          python scripts/simulate_device.py --url http://localhost:8000 --api-key ci-key --count 3 --interval 0
+          curl -sf http://localhost:8000/api/v1/measurements/latest
