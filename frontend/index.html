@@ -19,13 +19,14 @@
       <img src="assets/favicon.svg" alt="" width="36" height="36">
       <div>
         <h1>ESP32 Distance Monitoring System</h1>
-        <p class="subtitle">ESP32-CAM · HC-SR04 · NTP · WiFi · Firebase</p>
+        <p class="subtitle">ESP32-CAM · HC-SR04 · NTP · WiFi · Firebase · Alertas en tiempo real</p>
       </div>
     </div>
     <div class="topbar-actions">
       <span id="connection-badge" class="badge badge-unknown" title="Estado de conexión con Firebase">
         <span class="dot"></span><span class="label">Conectando…</span>
       </span>
+      <button id="sound-toggle" class="btn btn-ghost" type="button" aria-pressed="false" title="El navegador exige un clic para permitir el sonido">🔕 Activar sonido</button>
       <button id="settings-toggle" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="settings-panel">⚙ Configuración</button>
     </div>
   </header>
@@ -48,6 +49,15 @@
   </section>
 
   <main class="container">
+    <section id="alert-banner" class="alert-banner" role="alert" hidden>
+      <span class="alert-icon" aria-hidden="true">⚠</span>
+      <div class="alert-text">
+        <strong id="alert-title">Cambio de distancia detectado</strong>
+        <span id="alert-message">--</span>
+      </div>
+      <button id="alert-dismiss" class="btn btn-ghost" type="button">Entendido</button>
+    </section>
+
     <section class="cards" aria-label="Indicadores principales">
       <article class="card card-highlight">
         <h2>Distancia actual</h2>
@@ -80,6 +90,7 @@
       <div class="stat"><span class="stat-label">Máximo</span><span id="stat-max" class="stat-value">--</span></div>
       <div class="stat"><span class="stat-label">Promedio</span><span id="stat-avg" class="stat-value">--</span></div>
       <div class="stat"><span class="stat-label">Registros</span><span id="stat-total" class="stat-value">--</span></div>
+      <div class="stat"><span class="stat-label">Alertas</span><span id="stat-alerts" class="stat-value">--</span></div>
     </section>
 
     <section class="panel">
@@ -98,6 +109,23 @@
       </div>
       <div class="chart-wrapper">
         <canvas id="distance-chart" aria-label="Gráfico de distancia en el tiempo" role="img"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Alertas de cambio de distancia</h2>
+        <span id="alert-rule" class="hint">Se alerta cuando dos lecturas consecutivas difieren ≥ 10 cm</span>
+      </div>
+      <div class="table-wrapper table-short">
+        <table>
+          <thead>
+            <tr><th>Fecha y hora</th><th>Anterior (cm)</th><th>Actual (cm)</th><th>Cambio (cm)</th><th>Tipo</th></tr>
+          </thead>
+          <tbody id="alerts-body">
+            <tr><td colspan="5" class="empty">Sin alertas</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 

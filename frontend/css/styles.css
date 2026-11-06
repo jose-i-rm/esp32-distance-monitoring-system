@@ -128,6 +128,26 @@ h1, h2 { margin: 0; }
 .export-hint { margin: -0.5rem 0 0.75rem; }
 
 .table-wrapper { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+.table-short { max-height: 260px; }
+.tag-near { color: var(--danger); font-weight: 600; }
+.tag-far { color: var(--warning); font-weight: 600; }
+
+/* Alertas de cambio de distancia */
+.alert-banner {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin-bottom: 1.25rem; padding: 1rem 1.25rem;
+  border: 2px solid var(--warning); border-radius: var(--radius);
+  background: rgba(245, 158, 11, 0.14); box-shadow: var(--shadow);
+  animation: alert-pulse 1s ease-in-out 3;
+}
+.alert-banner.alert-near { border-color: var(--danger); background: rgba(239, 68, 68, 0.16); }
+.alert-icon { font-size: 2rem; line-height: 1; }
+.alert-text { display: flex; flex-direction: column; flex: 1; min-width: 220px; }
+.alert-text strong { font-size: 1.1rem; }
+@keyframes alert-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th { position: sticky; top: 0; background: var(--surface-2); color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }

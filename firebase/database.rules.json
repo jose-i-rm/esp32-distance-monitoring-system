@@ -18,12 +18,35 @@
       }
     },
 
+    "alerts": {
+      ".read": true,
+      ".indexOn": ["epoch"],
+      "$epoch": {
+        ".write": "auth != null && auth.uid === 'jz0Com63Fkam7s5IuOkolcWOdAL2' && !data.exists()",
+        ".validate": "newData.hasChildren(['epoch', 'ts', 'previous_cm', 'distance_cm', 'delta_cm', 'type', 'received_at']) && $epoch.matches(/^[0-9]{10}$/)",
+        "epoch": { ".validate": "newData.isNumber()" },
+        "ts": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "previous_cm": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
+        "distance_cm": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
+        "delta_cm": { ".validate": "newData.isNumber() && newData.val() >= -1000 && newData.val() <= 1000" },
+        "type": { ".validate": "newData.val() === 'acercamiento' || newData.val() === 'alejamiento'" },
+        "threshold_cm": { ".validate": "newData.isNumber() && newData.val() > 0" },
+        "received_at": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "device": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "stats": {
       ".read": true,
       ".write": "auth != null && auth.uid === 'jz0Com63Fkam7s5IuOkolcWOdAL2'",
       "count": { ".validate": "newData.isNumber()" },
+      "alert_count": { ".validate": "newData.isNumber()" },
       "latest": {
         ".validate": "newData.hasChildren(['epoch', 'ts', 'distance_cm', 'received_at'])"
+      },
+      "last_alert": {
+        ".validate": "newData.hasChildren(['epoch', 'ts', 'previous_cm', 'distance_cm', 'delta_cm', 'type', 'received_at'])"
       },
       "$other": { ".validate": false }
     }

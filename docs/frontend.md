@@ -11,8 +11,8 @@ frontend/
 ├── index.html          # Maquetación del dashboard
 ├── css/styles.css      # Tema oscuro, diseño responsive (CSS Grid)
 ├── js/config.js        # URL de Firebase e intervalos
-├── js/api.js           # Cliente REST de Firebase (fetch + timeout)
-├── js/app.js           # Estado, renderizado, refresco periódico y exportación a Excel
+├── js/api.js           # Cliente REST de Firebase (fetch + timeout) y streaming (EventSource)
+├── js/app.js           # Estado, renderizado, alertas con sonido, refresco y exportación a Excel
 └── assets/favicon.svg
 ```
 
@@ -28,8 +28,12 @@ frontend/
 | **Gráfico temporal** | `/measurements` (`limitToLast`) | Línea con Chart.js; 20, 50, 120 o 500 lecturas. |
 | **Historial** | Lecturas cargadas | Tabla con hora de lectura y hora de recepción en Firebase. |
 | **Descargar Excel** | `/measurements` (rango por `startAt`/`endAt`) | `.xlsx` con hojas *Lecturas* y *Resumen*. |
+| **Alerta (banner + sonido)** | Streaming de `/stats/last_alert` | Mensaje con distancia anterior, actual y cambio; tres pitidos generados con Web Audio. Solo suenan las alertas que llegan después de abrir la página. |
+| **Alertas de cambio** | `/alerts` (`limitToLast=20`) + `/stats/alert_count` | Tabla de alertas y contador; las lecturas con alerta se resaltan en rojo en el gráfico. |
 
-Refresco automático cada 15 s (configurable). Los umbrales del estado del dispositivo se derivan de `DEVICE_INTERVAL_SECONDS` (30 s) y `DEVICE_OFFLINE_FACTOR` (3) en `js/config.js`.
+Los datos se actualizan **al instante** por la API de *streaming* REST de Firebase (`EventSource` sobre `/stats.json`); además hay un refresco de respaldo cada 15 s (configurable). Los umbrales del estado del dispositivo se derivan de `DEVICE_INTERVAL_SECONDS` (30 s) y `DEVICE_OFFLINE_FACTOR` (3) en `js/config.js`.
+
+> **Sonido:** los navegadores bloquean el audio hasta que el usuario interactúa con la página. Pulse **🔕 Activar sonido** una vez (se oye un pitido de prueba); desde ese momento cada alerta suena.
 
 ## Exportación a Excel
 
@@ -49,6 +53,8 @@ window.APP_CONFIG = {
   DEVICE_INTERVAL_SECONDS: 30,
   DEVICE_OFFLINE_FACTOR: 3,
   MAX_DISTANCE_CM: 400,
+  ALERT_THRESHOLD_CM: 10,   // Debe coincidir con UMBRAL_CAMBIO_CM del firmware
+  ALERTS_LIMIT: 20,
 };
 ```
 

@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/).
 
+## [3.0.0] - 2026-11-05
+
+### Añadido
+
+- **Alertas por cambio de distancia:** el firmware compara cada lectura con la anterior y, si el cambio es ≥ 10 cm, registra la alerta en `/alerts/<epoch>`, `stats/last_alert` y `stats/alert_count` dentro de la misma escritura atómica.
+- Reglas de Firebase para `/alerts` (solo escritura del dispositivo, sin sobrescritura, validación de tipos y rangos) y para los nuevos campos de `/stats`.
+- Dashboard: actualización en tiempo real por *streaming* REST de Firebase (Server-Sent Events), banner de alerta con mensaje, sonido generado con Web Audio (botón *Activar sonido*), tabla y contador de alertas, y lecturas con alerta resaltadas en el gráfico.
+
+### Cambiado
+
+- El dashboard ya no depende solo del refresco periódico: el refresco de 15 s queda como respaldo del streaming.
+
 ## [2.0.0] - 2026-11-01
 
 ### Añadido

@@ -10,4 +10,7 @@ window.APP_CONFIG = {
   DEVICE_INTERVAL_SECONDS: 30,
   DEVICE_OFFLINE_FACTOR: 3,
   MAX_DISTANCE_CM: 400,
+  // Debe coincidir con UMBRAL_CAMBIO_CM del firmware (solo se usa para mostrar la regla).
+  ALERT_THRESHOLD_CM: 10,
+  ALERTS_LIMIT: 20,
 };

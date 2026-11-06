@@ -31,15 +31,18 @@ sequenceDiagram
 
 La escritura es **multiruta y atómica**: la lectura, `stats/latest` y el contador `stats/count` (incremento en servidor) se guardan juntos o no se guarda nada.
 
+**Alertas (v3):** si la lectura difiere de la anterior en **10 cm o más**, el mismo `PATCH` incluye además `alerts/<epoch>`, `stats/last_alert` y `stats/alert_count` (incremento en servidor). El dashboard escucha `/stats` con la API de *streaming* REST (Server-Sent Events) y emite el sonido y el mensaje en cuanto llega la alerta.
+
 ## Reglas de seguridad
 
 | Ruta | Lectura | Escritura |
 |------|---------|-----------|
 | `/measurements` | Pública | Solo el UID del dispositivo; **no** permite sobrescribir ni borrar (`!data.exists()`). |
+| `/alerts` | Pública | Solo el UID del dispositivo; **no** permite sobrescribir ni borrar. |
 | `/stats` | Pública | Solo el UID del dispositivo. |
 | Resto | Denegada | Denegada |
 
-Validaciones: clave de 10 dígitos (epoch), `distance_cm` numérico entre 0 y 1000, `ts` texto ≤ 40 caracteres, `received_at` igual a la hora del servidor y sin campos adicionales.
+Validaciones: clave de 10 dígitos (epoch), `distance_cm` numérico entre 0 y 1000, `ts` texto ≤ 40 caracteres, `received_at` igual a la hora del servidor y sin campos adicionales. En `/alerts` además: `previous_cm` entre 0 y 1000, `delta_cm` entre −1000 y 1000 y `type` igual a `acercamiento` o `alejamiento`.
 
 Desplegar cambios en las reglas:
 
@@ -55,6 +58,7 @@ firebase deploy --only database
 DB=https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com
 curl "$DB/stats.json"                                                  # Total y última lectura
 curl "$DB/measurements.json?orderBy=\"\$key\"&limitToLast=10"          # Últimas 10
+curl "$DB/alerts.json?orderBy=\"\$key\"&limitToLast=10"                # Últimas 10 alertas
 curl "$DB/measurements.json?orderBy=\"\$key\"&startAt=\"1793502000\"&endAt=\"1793588399\""  # Rango por epoch
 ```
 

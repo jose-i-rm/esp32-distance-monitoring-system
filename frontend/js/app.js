@@ -2,7 +2,7 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEYS = { dbUrl: "esp32dms.dbUrl", refresh: "esp32dms.refresh", limit: "esp32dms.limit" };
+  const STORAGE_KEYS = { dbUrl: "esp32dms.dbUrl", refresh: "esp32dms.refresh", limit: "esp32dms.limit", sound: "esp32dms.sound" };
   const defaults = window.APP_CONFIG;
 
   const state = {
@@ -17,6 +17,12 @@
     timer: null,
     chart: null,
     loading: false,
+    alerts: [],
+    lastAlertEpoch: null,   // última alerta ya conocida (las anteriores a la carga no suenan)
+    lastLatestEpoch: null,
+    soundEnabled: false,
+    audioCtx: null,
+    stream: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -48,6 +54,14 @@
     dbUrlInput: $("db-url-input"),
     refreshInput: $("refresh-input"),
     toast: $("toast"),
+    soundToggle: $("sound-toggle"),
+    alertBanner: $("alert-banner"),
+    alertTitle: $("alert-title"),
+    alertMessage: $("alert-message"),
+    alertDismiss: $("alert-dismiss"),
+    alertsBody: $("alerts-body"),
+    alertRule: $("alert-rule"),
+    statAlerts: $("stat-alerts"),
   };
 
   const dateFmt = new Intl.DateTimeFormat("es-CO", {
@@ -139,6 +153,121 @@
     el.statTotal.textContent = total;
   }
 
+  /* ---------- Alertas ---------- */
+
+  const alertTypeLabel = (type) => (type === "acercamiento" ? "Acercamiento" : "Alejamiento");
+  const signed = (value) => `${value > 0 ? "+" : ""}${formatCm(value)}`;
+
+  function renderAlerts() {
+    const body = el.alertsBody;
+    body.replaceChildren();
+    el.statAlerts.textContent = state.stats?.alert_count ?? state.alerts.length;
+    if (!state.alerts.length) {
+      const cell = body.insertRow().insertCell();
+      cell.colSpan = 5;
+      cell.className = "empty";
+      cell.textContent = "Sin alertas";
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    state.alerts.forEach((a) => {
+      const row = document.createElement("tr");
+      [formatDate(a.ts), formatCm(a.previous_cm), formatCm(a.distance_cm), signed(a.delta_cm), alertTypeLabel(a.type)]
+        .forEach((value, i) => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          if (i === 4) cell.className = a.type === "acercamiento" ? "tag-near" : "tag-far";
+          row.appendChild(cell);
+        });
+      fragment.appendChild(row);
+    });
+    body.appendChild(fragment);
+  }
+
+  // Tres pitidos alternos generados con Web Audio (no requiere archivos de sonido).
+  function playAlarm() {
+    if (!state.soundEnabled || !state.audioCtx) return;
+    const ctx = state.audioCtx;
+    const start = ctx.currentTime + 0.05;
+    [880, 660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      const t = start + i * 0.25;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.22);
+    });
+  }
+
+  function triggerAlert(alert) {
+    const hora = timeFmt.format(new Date(alert.ts));
+    el.alertTitle.textContent = `${alertTypeLabel(alert.type)} detectado · ${hora}`;
+    el.alertMessage.textContent =
+      `La distancia cambió de ${formatCm(alert.previous_cm)} cm a ${formatCm(alert.distance_cm)} cm ` +
+      `(${signed(alert.delta_cm)} cm; umbral ${alert.threshold_cm ?? defaults.ALERT_THRESHOLD_CM} cm).`;
+    el.alertBanner.classList.toggle("alert-near", alert.type === "acercamiento");
+    el.alertBanner.hidden = false;
+    document.title = `⚠ ${alertTypeLabel(alert.type)} · ESP32 Distance Monitoring`;
+    playAlarm();
+    showToast(`Alerta: ${formatCm(alert.previous_cm)} → ${formatCm(alert.distance_cm)} cm`);
+  }
+
+  // Procesa /stats (desde la consulta periódica o desde el stream) y dispara la alerta si es nueva.
+  function onStats(stats) {
+    state.stats = stats;
+    const last = stats?.last_alert;
+    const epoch = last ? Number(last.epoch) : 0;
+    if (state.lastAlertEpoch === null) {
+      state.lastAlertEpoch = epoch;
+    } else if (epoch > state.lastAlertEpoch) {
+      state.lastAlertEpoch = epoch;
+      state.alerts = [last, ...state.alerts.filter((a) => a.epoch !== epoch)].slice(0, defaults.ALERTS_LIMIT);
+      renderAlerts();
+      triggerAlert(last);
+    }
+    el.statAlerts.textContent = stats?.alert_count ?? state.alerts.length;
+  }
+
+  async function loadAlerts() {
+    const res = await FirebaseClient.alerts(state.dbUrl, defaults.ALERTS_LIMIT);
+    if (res.ok) {
+      state.alerts = res.items;
+      renderAlerts();
+    }
+  }
+
+  // Tiempo real: Firebase empuja cada cambio de /stats (nueva lectura o alerta) sin esperar al refresco.
+  function startStream() {
+    if (state.stream) state.stream.close();
+    if (typeof EventSource === "undefined") return;
+    state.stream = FirebaseClient.listen(state.dbUrl, "stats", (stats) => {
+      onStats(stats);
+      const latestEpoch = Number(stats?.latest?.epoch) || null;
+      if (latestEpoch && latestEpoch !== state.lastLatestEpoch) {
+        state.lastLatestEpoch = latestEpoch;
+        refresh();
+      }
+    }, (open) => {
+      el.apiDetail.dataset.stream = open ? "en vivo" : "reconectando";
+    });
+  }
+
+  function setSound(enabled) {
+    state.soundEnabled = enabled;
+    if (enabled) {
+      state.audioCtx = state.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      state.audioCtx.resume();
+    }
+    el.soundToggle.textContent = enabled ? "🔔 Sonido activado" : "🔕 Activar sonido";
+    el.soundToggle.setAttribute("aria-pressed", String(enabled));
+    localStorage.setItem(STORAGE_KEYS.sound, enabled ? "1" : "0");
+  }
+
   function renderHistory() {
     const body = el.historyBody;
     body.replaceChildren();
@@ -170,6 +299,10 @@
     const ordered = [...state.measurements].reverse();
     const labels = ordered.map((m) => timeFmt.format(new Date(m.timestamp)));
     const data = ordered.map((m) => m.distance_cm);
+    // Las lecturas que generaron alerta se resaltan en rojo y con mayor tamaño.
+    const alertEpochs = new Set(state.alerts.map((a) => a.epoch));
+    const pointColors = ordered.map((m) => (alertEpochs.has(m.epoch) ? "#f87171" : "#38bdf8"));
+    const pointSizes = ordered.map((m) => (alertEpochs.has(m.epoch) ? 6 : 2));
 
     if (!state.chart) {
       const ctx = $("distance-chart").getContext("2d");
@@ -188,8 +321,10 @@
             backgroundColor: gradient,
             fill: true,
             tension: 0.3,
-            pointRadius: 2,
-            pointHoverRadius: 5,
+            pointRadius: pointSizes,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            pointHoverRadius: 7,
             borderWidth: 2,
           }],
         },
@@ -217,6 +352,9 @@
     }
     state.chart.data.labels = labels;
     state.chart.data.datasets[0].data = data;
+    state.chart.data.datasets[0].pointRadius = pointSizes;
+    state.chart.data.datasets[0].pointBackgroundColor = pointColors;
+    state.chart.data.datasets[0].pointBorderColor = pointColors;
     state.chart.update();
   }
 
@@ -226,10 +364,11 @@
     try {
       const res = await FirebaseClient.stats(state.dbUrl);
       if (res.ok) {
-        state.stats = res.body;
+        onStats(res.body);
         setIndicator(el.apiStatus, "ok", "Firebase conectado");
         setIndicator(el.connectionBadge, "ok", "Conectado");
-        el.apiDetail.textContent = `Realtime Database · latencia ${res.latencyMs} ms`;
+        const live = el.apiDetail.dataset.stream ? ` · ${el.apiDetail.dataset.stream}` : "";
+        el.apiDetail.textContent = `Realtime Database · latencia ${res.latencyMs} ms${live}`;
       } else {
         setIndicator(el.apiStatus, "warn", "Firebase con errores");
         setIndicator(el.connectionBadge, "warn", "Degradado");
@@ -264,6 +403,7 @@
       const healthy = await checkHealth();
       if (healthy) {
         const total = await loadMeasurements();
+        await loadAlerts();
         renderStats(total);
         renderHistory();
         renderChart();
@@ -370,6 +510,18 @@
     el.refreshBtn.addEventListener("click", refresh);
     el.exportForm.addEventListener("submit", exportExcel);
 
+    el.alertRule.textContent = `Se alerta cuando dos lecturas consecutivas difieren ≥ ${defaults.ALERT_THRESHOLD_CM} cm`;
+    // El navegador solo permite reproducir audio después de una interacción del usuario.
+    setSound(false);
+    el.soundToggle.addEventListener("click", () => {
+      setSound(!state.soundEnabled);
+      if (state.soundEnabled) playAlarm();
+    });
+    el.alertDismiss.addEventListener("click", () => {
+      el.alertBanner.hidden = true;
+      document.title = "ESP32 Distance Monitoring System";
+    });
+
     el.settingsToggle.addEventListener("click", () => {
       const open = el.settingsPanel.hidden;
       el.settingsPanel.hidden = !open;
@@ -386,6 +538,7 @@
       localStorage.setItem(STORAGE_KEYS.refresh, state.refreshSeconds);
       showToast("Configuración guardada");
       schedule();
+      startStream();
       refresh();
     });
 
@@ -408,5 +561,6 @@
     bindEvents();
     refresh();
     schedule();
+    startStream();
   });
 })();

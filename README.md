@@ -23,6 +23,8 @@
 
 **ESP32 Distance Monitoring System** es una solución IoT de extremo a extremo. Un sensor ultrasónico **HC-SR04**, conectado a una **ESP32-CAM AI Thinker**, mide la distancia **cada 30 segundos**. La ESP32 marca cada lectura con la hora real (**NTP**) y la envía por **WiFi/HTTPS** a **Firebase Realtime Database**. Un **dashboard web** público muestra los datos y permite **descargarlos en Excel**.
 
+**Novedad v3:** cuando la distancia cambia **10 cm o más** entre dos lecturas consecutivas, la ESP32 registra una **alerta** y el dashboard la recibe **en tiempo real** con **sonido y mensaje**.
+
 ```
 2026-11-01 11:08:55 | Distancia: 214.05 cm
   -> Guardado en Firebase
@@ -45,8 +47,10 @@
 | Gráfico temporal | Últimas 20 / 50 / 120 / 500 lecturas (Chart.js). |
 | Historial | Tabla con hora de lectura y hora de recepción en Firebase. |
 | **Descarga en Excel** | Archivo `.xlsx` con hojas **Lecturas** y **Resumen**. Puede filtrarse por rango de fechas o incluir el histórico completo. |
+| **Alertas en tiempo real** | Banner con mensaje y **sonido** (botón *Activar sonido*, requisito del navegador) cuando la distancia cambia ≥ 10 cm. |
+| **Historial de alertas** | Tabla con hora, distancia anterior, actual, cambio y tipo (acercamiento/alejamiento); las lecturas con alerta se marcan en rojo en el gráfico. |
 
-Refresco automático cada 15 s.
+Actualización inmediata por **streaming** de Firebase (Server-Sent Events) y refresco de respaldo cada 15 s.
 
 ## 🎯 Objetivos
 
@@ -67,9 +71,10 @@ Refresco automático cada 15 s.
 flowchart TD
     HC["HC-SR04<br/>Sensor ultrasónico"] -->|TRIG GPIO13 / ECHO GPIO14| ESP["ESP32-CAM<br/>WiFi + NTP"]
     ESP -->|"1. signInWithPassword (cada ~55 min)"| AUTH["Firebase Authentication<br/>cuenta del dispositivo"]
-    ESP -->|"2. HTTPS PATCH cada 30 s<br/>?auth=idToken"| DB[("Firebase Realtime Database<br/>/measurements · /stats")]
-    DB -->|"HTTPS GET (lectura pública)"| UI["Dashboard · GitHub Pages<br/>HTML5 · JS · Chart.js · SheetJS"]
+    ESP -->|"2. HTTPS PATCH cada 30 s<br/>?auth=idToken"| DB[("Firebase Realtime Database<br/>/measurements · /alerts · /stats")]
+    DB -->|"HTTPS GET + streaming SSE de /stats"| UI["Dashboard · GitHub Pages<br/>HTML5 · JS · Chart.js · SheetJS"]
     UI -->|.xlsx| XLS["📊 Excel"]
+    UI -->|"🔔 sonido + mensaje"| USR["Usuario"]
 ```
 
 | Capa | Tecnología | Hosting |
@@ -97,7 +102,25 @@ flowchart TD
       "device": "esp32-cam-01"
     }
   },
-  "stats": { "count": 1, "latest": { "...": "copia de la última lectura" } }
+  "alerts": {
+    "1793553582": {
+      "epoch": 1793553582,
+      "ts": "2026-11-01T11:09:25-05:00",
+      "previous_cm": 214.05,
+      "distance_cm": 4.92,
+      "delta_cm": -209.13,
+      "type": "acercamiento",
+      "threshold_cm": 10.0,
+      "received_at": 1793553583410,
+      "device": "esp32-cam-01"
+    }
+  },
+  "stats": {
+    "count": 2,
+    "latest": { "...": "copia de la última lectura" },
+    "alert_count": 1,
+    "last_alert": { "...": "copia de la última alerta" }
+  }
 }
 ```
 
@@ -108,6 +131,8 @@ flowchart TD
 | `distance_cm` | Distancia medida, 2 decimales. |
 | `received_at` | Hora del servidor de Firebase al recibir la lectura (ms). |
 | `device` | Identificador del dispositivo. |
+| `previous_cm` / `delta_cm` | (Alertas) Lectura anterior y cambio `actual − anterior`; negativo = acercamiento. |
+| `type` / `threshold_cm` | (Alertas) `acercamiento` o `alejamiento` y umbral aplicado (10 cm). |
 
 ## 🔧 Hardware utilizado
 
@@ -213,15 +238,17 @@ cd frontend && python -m http.server 5500
 | 1 | Firmware: WiFi + NTP + HC-SR04 cada 30 s | ✅ Completado |
 | 2 | Envío autenticado a Firebase Realtime Database | ✅ Completado |
 | 3 | Dashboard en GitHub Pages + descarga en Excel | ✅ Completado |
-| 4 | MQTT (broker, LWT, comandos bidireccionales) | 📋 Planificado |
-| 5 | Servo SG90 para barrido angular | 📋 Planificado |
-| 6 | Captura de imágenes con ESP32-CAM | 📋 Planificado |
-| 7 | Visión artificial con Hugging Face | 📋 Planificado |
+| 4 | Alertas por cambio de distancia (≥ 10 cm) con sonido y mensaje en tiempo real | ✅ Completado |
+| 5 | Procesamiento de datos (preprocesamiento, filtrado y transformación) | ✅ Completado |
+| 6 | Servo SG90: barrido angular tipo radar | 📋 Siguiente iteración |
+| 7 | MQTT (broker, LWT, comandos bidireccionales) | 📋 Planificado |
+| 8 | Captura de imágenes con ESP32-CAM | 📋 Planificado |
+| 9 | Visión artificial con Hugging Face | 📋 Planificado |
 
 ## 🔮 Futuras mejoras
 
 - Búfer local en la ESP32 para reenviar lecturas cuando se pierde el WiFi.
-- Alertas por umbral (Telegram/correo).
+- Notificaciones externas de las alertas (Telegram/correo).
 - **MQTT**, **servo SG90**, **cámara** e **IA con Hugging Face** — ver [docs/futuras-integraciones.md](docs/futuras-integraciones.md).
 
 ## 📚 Documentación

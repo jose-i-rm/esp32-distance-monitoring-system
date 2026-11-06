@@ -5,6 +5,7 @@ Sketch Arduino para la **ESP32-CAM AI Thinker** con sensor **HC-SR04**. Funcione
 - Mide la distancia cada **30 s** (TRIG GPIO13, ECHO GPIO14).
 - Sincroniza la hora con **NTP** (UTC-5).
 - Envía cada lectura por **HTTPS** a **Firebase Realtime Database**, autenticado con la cuenta del dispositivo en Firebase Authentication.
+- **v3:** detecta en el borde los cambios de distancia ≥ **10 cm** (`UMBRAL_CAMBIO_CM`) frente a la lectura anterior y registra la alerta en Firebase.
 
 No requiere librerías externas: usa `WiFi`, `WiFiClientSecure` y `HTTPClient` del core ESP32 de Espressif (probado con **3.3.12**).
 
@@ -50,7 +51,8 @@ Firebase Auth: sesion iniciada
 2026-11-01 11:08:55 | Distancia: 214.05 cm
   -> Guardado en Firebase
 2026-11-01 11:09:25 | Distancia: 4.92 cm
-  -> Guardado en Firebase
+  ** ALERTA: cambio de -209.13 cm (214.05 -> 4.92 cm)
+  -> Guardado en Firebase (con alerta)
 ```
 
 ## Comportamiento
@@ -58,6 +60,7 @@ Firebase Auth: sesion iniciada
 | Situación | Acción del firmware |
 |-----------|---------------------|
 | Sin eco del sensor (fuera de rango > ~5 m o desconectado) | Imprime aviso y **no envía** la lectura. |
+| Cambio ≥ `UMBRAL_CAMBIO_CM` (10 cm) frente a la lectura anterior | Registra una **alerta** en `/alerts/<epoch>` y `stats/last_alert` en la misma escritura. La primera lectura tras reiniciar no genera alerta (no hay lectura previa). |
 | WiFi caído | Reintenta conectar antes de cada envío; la lectura de ese ciclo se pierde si no hay conexión. |
 | Token expirado (1 h) | Se renueva automáticamente 5 min antes; ante un `401` inicia sesión de nuevo y reintenta una vez. |
 | Temporización | Basada en `millis()`: una lectura cada 30 s aunque el envío HTTPS tarde 1–3 s. |
@@ -77,6 +80,21 @@ Una sola petición `PATCH {FIREBASE_DB_URL}/.json?auth=<idToken>` (escritura at�
   },
   "stats/latest": { "...": "mismo objeto" },
   "stats/count": { ".sv": { "increment": 1 } }
+}
+```
+
+Si hay alerta, el mismo `PATCH` agrega:
+
+```json
+{
+  "alerts/1793553582": {
+    "epoch": 1793553582, "ts": "2026-11-01T11:09:25-05:00",
+    "previous_cm": 214.05, "distance_cm": 4.92, "delta_cm": -209.13,
+    "type": "acercamiento", "threshold_cm": 10.0,
+    "received_at": { ".sv": "timestamp" }, "device": "esp32-cam-01"
+  },
+  "stats/last_alert": { "...": "mismo objeto" },
+  "stats/alert_count": { ".sv": { "increment": 1 } }
 }
 ```
 

@@ -6,6 +6,8 @@
  * - Hora real sincronizada por NTP (UTC-5).
  * - Envío HTTPS a Firebase autenticado con la cuenta del dispositivo
  *   (Firebase Authentication, correo/contraseña). No requiere librerías externas.
+ * - v3: detección de cambios en el borde. Si |distancia - anterior| >= UMBRAL_CAMBIO_CM
+ *   se registra un evento en /alerts y en /stats/last_alert (misma escritura atómica).
  *
  * Copie secrets.example.h como secrets.h y complete los valores.
  */
@@ -22,7 +24,11 @@ const unsigned long INTERVALO_MS = 30000;
 const long GMT_OFFSET_S = -5 * 3600;
 const char* ZONA_ISO = "-05:00";
 
+// Cambio mínimo entre lecturas consecutivas que genera una alerta (el ruido del sensor es < 1 cm).
+const float UMBRAL_CAMBIO_CM = 10.0;
+
 String idToken;
+float distanciaAnterior = -1;  // -1: aún no hay lectura previa (no se alerta tras reiniciar)
 unsigned long tokenObtenidoMs = 0;
 unsigned long tokenVidaMs = 0;
 unsigned long ultimaLecturaMs = 0;
@@ -111,7 +117,8 @@ bool tokenVigente() {
 }
 
 // Guarda la lectura en /measurements/<epoch> y actualiza /stats en una sola petición.
-int enviarMedicion(time_t epoch, const char* fechaIso, float distancia) {
+// Si hay alerta, la añade en /alerts/<epoch> y /stats/last_alert dentro de la misma escritura.
+int enviarMedicion(time_t epoch, const char* fechaIso, float distancia, bool alerta, float anterior) {
   char registro[220];
   snprintf(registro, sizeof(registro),
            "{\"epoch\":%ld,\"ts\":\"%s\",\"distance_cm\":%.2f,"
@@ -120,7 +127,22 @@ int enviarMedicion(time_t epoch, const char* fechaIso, float distancia) {
 
   String body = String("{\"measurements/") + String((long)epoch) + "\":" + registro +
                 ",\"stats/latest\":" + registro +
-                ",\"stats/count\":{\".sv\":{\"increment\":1}}}";
+                ",\"stats/count\":{\".sv\":{\"increment\":1}}";
+
+  if (alerta) {
+    float delta = distancia - anterior;
+    char evento[300];
+    snprintf(evento, sizeof(evento),
+             "{\"epoch\":%ld,\"ts\":\"%s\",\"previous_cm\":%.2f,\"distance_cm\":%.2f,"
+             "\"delta_cm\":%.2f,\"type\":\"%s\",\"threshold_cm\":%.1f,"
+             "\"received_at\":{\".sv\":\"timestamp\"},\"device\":\"%s\"}",
+             (long)epoch, fechaIso, anterior, distancia, delta,
+             delta < 0 ? "acercamiento" : "alejamiento", UMBRAL_CAMBIO_CM, DEVICE_ID);
+    body += String(",\"alerts/") + String((long)epoch) + "\":" + evento +
+            ",\"stats/last_alert\":" + evento +
+            ",\"stats/alert_count\":{\".sv\":{\"increment\":1}}";
+  }
+  body += "}";
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -215,17 +237,25 @@ void loop() {
   strncat(fechaIso, ZONA_ISO, sizeof(fechaIso) - strlen(fechaIso) - 1);
   time_t epoch = time(nullptr);
 
+  // Detección de cambio en el borde: se compara con la última lectura válida.
+  bool alerta = distanciaAnterior >= 0 && fabs(distance - distanciaAnterior) >= UMBRAL_CAMBIO_CM;
+  float anterior = distanciaAnterior;
+  distanciaAnterior = distance;
+  if (alerta) {
+    Serial.printf("  ** ALERTA: cambio de %.2f cm (%.2f -> %.2f cm)\n", distance - anterior, anterior, distance);
+  }
+
   conectarWiFi();
   if (WiFi.status() != WL_CONNECTED) return;
 
   if (!tokenVigente() && !iniciarSesionFirebase()) return;
 
-  int code = enviarMedicion(epoch, fechaIso, distance);
+  int code = enviarMedicion(epoch, fechaIso, distance, alerta, anterior);
   if (code == 401 && iniciarSesionFirebase()) {
-    code = enviarMedicion(epoch, fechaIso, distance);
+    code = enviarMedicion(epoch, fechaIso, distance, alerta, anterior);
   }
 
   if (code == 200) {
-    Serial.println("  -> Guardado en Firebase");
+    Serial.println(alerta ? "  -> Guardado en Firebase (con alerta)" : "  -> Guardado en Firebase");
   }
 }
