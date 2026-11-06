@@ -191,6 +191,7 @@ flowchart LR
 ├── firebase/                 # Reglas de seguridad de Realtime Database
 ├── firmware/                 # Sketch Arduino de la ESP32-CAM (Firebase)
 ├── frontend/                 # Dashboard HTML5 + JS + Chart.js + SheetJS (GitHub Pages)
+├── processing/               # Pipeline ETL en Python: preprocesamiento, filtrado y transformación
 ├── .github/workflows/        # Despliegue en GitHub Pages y CI del backend alternativo
 ├── docs/                     # Documentación técnica
 ├── diagrams/                 # Diagramas Mermaid
@@ -231,6 +232,15 @@ cd frontend && python -m http.server 5500
 # http://localhost:5500
 ```
 
+### 4. Procesamiento de datos
+
+```bash
+pip install -r processing/requirements.txt
+python processing/pipeline.py      # descarga de Firebase → processing/output/ (Excel, CSV, figuras)
+```
+
+Detalle de las operaciones: [processing/README.md](processing/README.md).
+
 ## 🗺 Roadmap
 
 | Fase | Alcance | Estado |
@@ -257,7 +267,8 @@ cd frontend && python -m http.server 5500
 |-----------|-------------|
 | [docs/firebase.md](docs/firebase.md) | Proyecto Firebase, reglas, cuenta del dispositivo y límites del plan gratuito |
 | [firmware/README.md](firmware/README.md) | Firmware, configuración y contrato de datos |
-| [docs/frontend.md](docs/frontend.md) | Dashboard y exportación a Excel |
+| [docs/frontend.md](docs/frontend.md) | Dashboard, alertas con sonido y exportación a Excel |
+| [processing/README.md](processing/README.md) | Pipeline de preprocesamiento, filtrado y transformación |
 | [docs/hardware.md](docs/hardware.md) | Componentes, conexiones y consideraciones eléctricas |
 | [docs/credenciales-pendientes.md](docs/credenciales-pendientes.md) | Estado de cuentas y credenciales |
 | [docs/solucion-de-problemas.md](docs/solucion-de-problemas.md) | Errores frecuentes |

@@ -9,6 +9,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **Alertas por cambio de distancia:** el firmware compara cada lectura con la anterior y, si el cambio es ≥ 10 cm, registra la alerta en `/alerts/<epoch>`, `stats/last_alert` y `stats/alert_count` dentro de la misma escritura atómica.
 - Reglas de Firebase para `/alerts` (solo escritura del dispositivo, sin sobrescritura, validación de tipos y rangos) y para los nuevos campos de `/stats`.
 - Dashboard: actualización en tiempo real por *streaming* REST de Firebase (Server-Sent Events), banner de alerta con mensaje, sonido generado con Web Audio (botón *Activar sonido*), tabla y contador de alertas, y lecturas con alerta resaltadas en el gráfico.
+- Pipeline de procesamiento `processing/pipeline.py`: preprocesamiento (tipos, zona horaria, duplicados, rango, huecos, sesiones, latencia), filtro de Hampel, detección de cambios, estados, episodios, normalización y agregación cada 5 min; exporta Excel, CSV, figuras y resumen, y contrasta las alertas del borde con las recalculadas.
+- Pruebas del pipeline (pytest) y workflow `Processing CI`.
 
 ### Cambiado
 
