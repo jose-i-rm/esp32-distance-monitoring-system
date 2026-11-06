@@ -1,0 +1,40 @@
+{
+  "calidad": {
+    "lecturas_recibidas": 372,
+    "sesiones": 1,
+    "lecturas_esperadas": 372,
+    "completitud_pct": 100.0,
+    "huecos": 0,
+    "lecturas_perdidas": 0,
+    "fuera_de_rango": 0,
+    "picos_hampel": 3,
+    "latencia_mediana_s": 1.47,
+    "latencia_p95_s": 2.31,
+    "latencia_max_s": 6.24,
+    "desde": "2026-11-01T13:44:53-05:00",
+    "hasta": "2026-11-01T16:50:31-05:00"
+  },
+  "alertas_borde_vs_pipeline": {
+    "alertas_borde": 0,
+    "coinciden": 0,
+    "solo_borde": 0,
+    "solo_pipeline": 0,
+    "desde_epoch": null
+  },
+  "parametros": {
+    "interval_s": 30,
+    "min_cm": 2.0,
+    "max_cm": 400.0,
+    "change_threshold_cm": 10.0,
+    "near_threshold_cm": 100.0,
+    "hampel_window": 5,
+    "hampel_k": 3.0,
+    "hampel_min_mad_cm": 1.0,
+    "gap_factor": 1.5,
+    "session_gap_s": 600,
+    "resample": "5min"
+  },
+  "cambios_detectados": 10,
+  "cambios_transitorios": 2,
+  "episodios": 6
+}
