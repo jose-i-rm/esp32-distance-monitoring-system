@@ -141,6 +141,7 @@ h1, h2 { margin: 0; }
   animation: alert-pulse 1s ease-in-out 3;
 }
 .alert-banner.alert-near { border-color: var(--danger); background: rgba(239, 68, 68, 0.16); }
+.alert-banner[hidden] { display: none; }
 .alert-icon { font-size: 2rem; line-height: 1; }
 .alert-text { display: flex; flex-direction: column; flex: 1; min-width: 220px; }
 .alert-text strong { font-size: 1.1rem; }
