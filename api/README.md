@@ -14,7 +14,8 @@ Documentación interactiva generada por FastAPI: **`/docs`** (Swagger UI) y **`/
 | Endpoint | Autenticación |
 |----------|---------------|
 | `POST /api/v1/measurements` | Cabecera `X-API-Key: <DEVICE_API_KEY>` (si está configurada en el servidor) |
-| `GET` | Pública |
+| `GET /api/v1/*`, `/health` | Pública |
+| `/api/camera/*` | Cabecera `X-API-Key: <ADMIN_API_KEY>` **obligatoria** (sin `ADMIN_API_KEY` en el servidor → 503) |
 
 ## Endpoints
 
@@ -24,6 +25,15 @@ Documentación interactiva generada por FastAPI: **`/docs`** (Swagger UI) y **`/
 | `GET` | `/api/v1/measurements` | Lista paginada (más recientes primero) | 200, 422 |
 | `GET` | `/api/v1/measurements/latest` | Última medición | 200, 404 |
 | `GET` | `/health` | Estado del servicio y de la base de datos | 200, 503 |
+| `GET` | `/api/camera/status` | Estado en vivo de la cámara PTZ Tuya | 200, 401, 502, 503 |
+| `GET` | `/api/camera/events` | Eventos de cámara guardados | 200, 401 |
+| `POST` | `/api/camera/events/sync` | Sincroniza eventos desde Tuya Cloud | 200, 401, 502, 503 |
+| `GET` | `/api/camera/latest` | Último evento de cámara | 200, 401, 404 |
+| `POST` | `/api/camera/ptz` | Control PTZ / preset | 200, 401, 422, 429, 502 |
+| `GET` | `/api/camera/snapshot` | Imagen JPEG | 200, 401, 503 |
+| `GET` | `/api/camera/stream` | URL temporal de vídeo | 200, 401, 503 |
+
+Detalle y ejemplos de los endpoints de cámara: [docs/tuya-camara.md](../docs/tuya-camara.md).
 
 ---
 

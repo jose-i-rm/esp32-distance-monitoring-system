@@ -27,3 +27,16 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://jose-i-rm.github.io
+      - key: ADMIN_API_KEY
+        generateValue: true
+      # Secretos de Tuya: definir en el panel de Render (sync: false = no se guardan en el repo)
+      - key: TUYA_ACCESS_ID
+        sync: false
+      - key: TUYA_ACCESS_SECRET
+        sync: false
+      - key: TUYA_DEVICE_ID
+        sync: false
+      - key: TUYA_ENDPOINT
+        value: https://openapi.tuyaus.com
+      - key: TUYA_POLL_INTERVAL_SECONDS
+        value: "300"

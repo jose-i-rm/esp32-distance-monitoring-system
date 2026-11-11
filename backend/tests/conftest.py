@@ -3,7 +3,13 @@ import os
 # Las pruebas usan SQLite en memoria; se define antes de importar la aplicación.
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["DEVICE_API_KEY"] = "test-key"
+os.environ["ADMIN_API_KEY"] = "admin-test-key"
 os.environ["CORS_ORIGINS"] = "*"
+# Aísla las pruebas de un posible backend/.env local con credenciales reales.
+for _var in ("TUYA_ACCESS_ID", "TUYA_ACCESS_SECRET", "TUYA_DEVICE_ID"):
+    os.environ[_var] = ""
+os.environ["TUYA_POLL_INTERVAL_SECONDS"] = "0"
+os.environ["AUTO_CREATE_TABLES"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient

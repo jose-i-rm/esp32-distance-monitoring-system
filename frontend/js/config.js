@@ -13,4 +13,8 @@ window.APP_CONFIG = {
   // Debe coincidir con UMBRAL_CAMBIO_CM del firmware (solo se usa para mostrar la regla).
   ALERT_THRESHOLD_CM: 10,
   ALERTS_LIMIT: 20,
+  // Backend FastAPI para la cámara PTZ Tuya (vacío = el usuario lo indica en el panel).
+  // La clave de administración NUNCA se configura aquí: se introduce en el panel.
+  CAMERA_API_URL: "",
+  CAMERA_REFRESH_SECONDS: 30,
 };
