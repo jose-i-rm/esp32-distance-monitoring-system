@@ -389,6 +389,7 @@
     const res = await FirebaseClient.recent(state.dbUrl, state.limit);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     state.measurements = res.items;
+    document.dispatchEvent(new CustomEvent("measurements:updated", { detail: res.items }));
     const latest = state.stats?.latest;
     state.latest = latest ? FirebaseClient.normalize(String(latest.epoch), latest) : res.items[0] || null;
     state.total = Math.max(Number(state.stats?.count) || 0, res.items.length);

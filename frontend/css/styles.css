@@ -159,14 +159,30 @@ td.empty { text-align: center; color: var(--muted); padding: 2rem; }
 
 /* Cámara PTZ Tuya */
 .camera-form { margin: 0 0 0.5rem; max-width: none; }
-.camera-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 1.25rem; margin-top: 0.75rem; }
+.camera-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.25rem; margin-top: 0.75rem; }
 .camera-view { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
-.camera-view img { width: 100%; max-height: 260px; object-fit: contain; border-radius: 10px; border: 1px solid var(--border); background: #000; }
+.camera-screen {
+  width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: 1px solid var(--border); background: #000; overflow: hidden; position: relative;
+}
+.camera-screen video { width: 100%; height: 100%; object-fit: contain; }
+.camera-screen .hint { position: absolute; bottom: 0.5rem; left: 0.75rem; right: 0.75rem; margin: 0; text-shadow: 0 1px 2px #000; }
+.camera-view .panel-controls { flex-wrap: wrap; justify-content: center; }
+.camera-photo { margin: 0; width: 100%; }
+.camera-photo[hidden] { display: none; }
+.camera-photo img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; border: 1px solid var(--border); background: #000; }
+.camera-photo figcaption { margin-top: 0.25rem; }
 .ptz-pad { display: grid; grid-template-columns: repeat(3, 3rem); gap: 0.4rem; }
 .ptz-pad .btn { height: 3rem; font-size: 1.2rem; padding: 0; }
 .ptz-pad [data-ptz="stop"] { color: var(--danger); }
 code { background: var(--surface-2); padding: 0 0.3rem; border-radius: 4px; }
-@media (max-width: 860px) { .camera-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) { .camera-grid, .radar-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Radar HC-SR04 */
+.radar-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.25rem; margin-top: 0.75rem; }
+.radar-view { display: flex; flex-direction: column; gap: 0.4rem; }
+.radar-view canvas { width: 100%; display: block; border-radius: 10px; border: 1px solid rgba(34, 197, 94, 0.35); background: #020c06; }
+.radar-view .hint { margin: 0; }
 
 .toast {
   position: fixed; bottom: 1.25rem; right: 1.25rem; background: var(--surface-2); border: 1px solid var(--border);

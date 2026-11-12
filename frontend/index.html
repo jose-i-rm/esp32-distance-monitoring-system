@@ -9,9 +9,11 @@
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js" defer></script>
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
   <script src="js/app.js" defer></script>
+  <script src="js/radar.js" defer></script>
   <script src="js/camera.js" defer></script>
 </head>
 <body>
@@ -20,7 +22,7 @@
       <img src="assets/favicon.svg" alt="" width="36" height="36">
       <div>
         <h1>ESP32 Distance Monitoring System</h1>
-        <p class="subtitle">ESP32-S3 · HC-SR04 · NTP · WiFi · Firebase · Alertas en tiempo real</p>
+        <p class="subtitle">ESP32-S3 · HC-SR04 · Radar · Cámara PTZ · Firebase · Alertas en tiempo real</p>
       </div>
     </div>
     <div class="topbar-actions">
@@ -92,6 +94,30 @@
       <div class="stat"><span class="stat-label">Promedio</span><span id="stat-avg" class="stat-value">--</span></div>
       <div class="stat"><span class="stat-label">Registros</span><span id="stat-total" class="stat-value">--</span></div>
       <div class="stat"><span class="stat-label">Alertas</span><span id="stat-alerts" class="stat-value">--</span></div>
+    </section>
+
+    <section class="panel radar-panel" aria-labelledby="radar-title">
+      <div class="panel-header">
+        <h2 id="radar-title">Radar HC-SR04</h2>
+        <span id="radar-status" class="status status-unknown"><span class="dot"></span><span class="label">Esperando lecturas</span></span>
+      </div>
+      <div class="radar-grid">
+        <div class="radar-view">
+          <canvas id="radar-canvas" role="img" aria-label="Radar con la posición del objeto detectado por el HC-SR04"></canvas>
+          <p id="radar-detail" class="hint">Sin datos</p>
+          <p class="hint">Sensor con rumbo fijo (90°). El barrido angular llegará con el servo SG90; por ahora la cámara PTZ y el radar funcionan de forma independiente.</p>
+        </div>
+        <div class="table-wrapper table-short">
+          <table>
+            <thead>
+              <tr><th>Hora</th><th>Distancia (cm)</th><th>Cambio (cm)</th><th>Tendencia</th></tr>
+            </thead>
+            <tbody id="radar-body">
+              <tr><td colspan="4" class="empty">Sin datos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -175,8 +201,19 @@
 
       <div class="camera-grid">
         <div class="camera-view">
-          <img id="camera-snapshot" alt="Última imagen de la cámara" hidden>
-          <p id="camera-snapshot-msg" class="hint">Pulse «Snapshot» para solicitar una imagen.</p>
+          <div class="camera-screen">
+            <video id="camera-video" muted playsinline hidden></video>
+            <p id="camera-snapshot-msg" class="hint">Pulse «Ver en vivo» para iniciar el vídeo.</p>
+          </div>
+          <div class="panel-controls">
+            <button id="camera-live-btn" class="btn btn-primary" type="button">▶ Ver en vivo</button>
+            <button id="camera-snapshot-btn" class="btn btn-ghost" type="button">📷 Tomar foto</button>
+            <a id="camera-download" class="btn btn-ghost" download hidden>⬇ Descargar foto</a>
+          </div>
+          <figure id="camera-photo" class="camera-photo" hidden>
+            <img id="camera-snapshot" alt="Última foto de la cámara">
+            <figcaption id="camera-photo-caption" class="hint"></figcaption>
+          </figure>
           <div class="ptz-pad" role="group" aria-label="Control PTZ">
             <button class="btn" data-ptz="up_left" type="button" aria-label="Arriba izquierda">↖</button>
             <button class="btn" data-ptz="up" type="button" aria-label="Arriba">↑</button>
@@ -189,7 +226,6 @@
             <button class="btn" data-ptz="down_right" type="button" aria-label="Abajo derecha">↘</button>
           </div>
           <div class="panel-controls">
-            <button id="camera-snapshot-btn" class="btn btn-ghost" type="button">📷 Snapshot</button>
             <button id="camera-sync-btn" class="btn btn-ghost" type="button">↻ Sincronizar eventos</button>
           </div>
         </div>
