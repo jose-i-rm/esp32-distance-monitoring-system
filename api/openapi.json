@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ESP32 Distance Monitoring System",
-    "description": "API REST para el registro y consulta de mediciones de distancia capturadas por una ESP32-CAM con sensor ultrasónico HC-SR04.",
-    "version": "1.0.0"
+    "description": "API REST de la plataforma de vigilancia híbrida: mediciones del radar ESP32 + HC-SR04 y eventos/control de la cámara PTZ Tuya.",
+    "version": "1.1.0"
   },
   "paths": {
     "/health": {
@@ -191,10 +191,568 @@
           }
         }
       }
+    },
+    "/api/camera/status": {
+      "get": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Estado en vivo de la cámara",
+        "operationId": "camera_status_api_camera_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/camera/events": {
+      "get": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Historial de eventos guardados",
+        "operationId": "camera_events_api_camera_events_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "event_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "humanoid_detection, abnormal_sound, alarm…",
+              "title": "Event Type"
+            },
+            "description": "humanoid_detection, abnormal_sound, alarm…"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Desde (ISO 8601).",
+              "title": "Start"
+            },
+            "description": "Desde (ISO 8601)."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Hasta (ISO 8601).",
+              "title": "End"
+            },
+            "description": "Hasta (ISO 8601)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraEventList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/camera/events/sync": {
+      "post": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Sincronizar eventos desde Tuya Cloud",
+        "operationId": "sync_camera_events_api_camera_events_sync_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraSyncResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/camera/latest": {
+      "get": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Último evento de la cámara",
+        "operationId": "latest_camera_event_api_camera_latest_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/camera/ptz": {
+      "post": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Mover la cámara (PTZ) o ir a un preset",
+        "operationId": "camera_ptz_api_camera_ptz_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PtzCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PtzResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/camera/snapshot": {
+      "get": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "Imagen actual o última imagen de alarma",
+        "operationId": "camera_snapshot_api_camera_snapshot_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "503": {
+            "description": "Sin mecanismo de captura disponible"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/camera/stream": {
+      "get": {
+        "tags": [
+          "Cámara PTZ Tuya"
+        ],
+        "summary": "URL temporal de vídeo en vivo",
+        "operationId": "camera_stream_api_camera_stream_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(hls|rtsp|flv|rtmp)$",
+              "default": "hls",
+              "title": "Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CameraEventList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CameraEventRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "CameraEventList"
+      },
+      "CameraEventRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "event_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Event Time"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "tuya_cmd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tuya Cmd"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "has_image": {
+            "type": "boolean",
+            "title": "Has Image",
+            "default": false
+          },
+          "image_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Expires At"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "device_id",
+          "event_time",
+          "event_type",
+          "code",
+          "source",
+          "created_at"
+        ],
+        "title": "CameraEventRead",
+        "description": "Evento de cámara expuesto por la API (sin la clave AES de la imagen)."
+      },
+      "CameraStatus": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "product_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Name"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "online": {
+            "type": "boolean",
+            "title": "Online"
+          },
+          "time_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Zone"
+          },
+          "update_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Update Time"
+          },
+          "status": {
+            "type": "object",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "online",
+          "status"
+        ],
+        "title": "CameraStatus"
+      },
+      "CameraSyncResult": {
+        "properties": {
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "inserted": {
+            "type": "integer",
+            "title": "Inserted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fetched",
+          "inserted"
+        ],
+        "title": "CameraSyncResult"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -336,6 +894,126 @@
           "created_at"
         ],
         "title": "MeasurementRead"
+      },
+      "PtzCommand": {
+        "properties": {
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "up_right",
+                  "right",
+                  "down_right",
+                  "down",
+                  "down_left",
+                  "left",
+                  "up_left",
+                  "stop"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction",
+            "description": "Dirección del movimiento o `stop`."
+          },
+          "duration_ms": {
+            "type": "integer",
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "description": "Duración del giro; luego se envía ptz_stop. 0 = continuo.",
+            "default": 500
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 6.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset",
+            "description": "Ir a la posición predefinida (ipc_preset_action)."
+          }
+        },
+        "type": "object",
+        "title": "PtzCommand"
+      },
+      "PtzResult": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "PtzResult"
+      },
+      "StreamResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "URL temporal firmada por Tuya; expira en pocos minutos. No compartir."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "url"
+        ],
+        "title": "StreamResponse"
       },
       "ValidationError": {
         "properties": {

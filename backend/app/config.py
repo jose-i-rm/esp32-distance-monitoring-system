@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app import __version__
@@ -25,6 +25,33 @@ class Settings(BaseSettings):
 
     # Crea las tablas al iniciar (útil con SQLite en desarrollo). En producción usar Alembic.
     auto_create_tables: bool = False
+
+    # Clave de administración para los endpoints de cámara (cabecera X-API-Key).
+    # Si está vacía, los endpoints /api/camera/* responden 503 (fail-closed).
+    admin_api_key: str = ""
+
+    # Tuya Cloud (proyecto Custom Development). Definir SOLO en .env o en el gestor de secretos.
+    tuya_access_id: str = ""
+    tuya_access_secret: SecretStr = SecretStr("")
+    tuya_device_id: str = ""
+    tuya_endpoint: str = "https://openapi.tuyaus.com"
+    # Sondeo periódico de eventos de la cámara hacia PostgreSQL (0 = desactivado).
+    tuya_poll_interval_seconds: int = 0
+    # Pausa mínima entre comandos PTZ y duración máxima de un movimiento.
+    ptz_min_interval_seconds: float = 1.0
+    ptz_max_duration_ms: int = 3000
+
+    @field_validator("tuya_endpoint")
+    @classmethod
+    def require_https_endpoint(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if value and not value.startswith("https://"):
+            raise ValueError("TUYA_ENDPOINT debe usar HTTPS")
+        return value
+
+    @property
+    def tuya_configured(self) -> bool:
+        return bool(self.tuya_access_id and self.tuya_access_secret.get_secret_value() and self.tuya_device_id)
 
     @field_validator("database_url")
     @classmethod

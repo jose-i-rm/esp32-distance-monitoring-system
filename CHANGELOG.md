@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/).
 
+## [4.0.0] - 2026-11-11
+
+### Añadido
+
+- **Integración con la cámara PTZ Tuya** (`backend/app/integrations/tuya`): cliente `TuyaClient` reutilizable (firma HMAC-SHA256, token con caché y renovación, errores tipados) y `CameraService` (eventos, PTZ, vídeo, snapshot).
+- Endpoints `/api/camera/status`, `/events`, `/events/sync`, `/latest`, `/ptz`, `/snapshot` y `/stream`, protegidos con `ADMIN_API_KEY` (*fail-closed*).
+- Tabla `camera_events` (migración Alembic `0002`) con deduplicación; normalización de *humanoid detection* (`ipc_human`), *abnormal sound* (`ipc_bang`), alarm/disalarm y online/offline.
+- Sondeo periódico opcional de eventos (`TUYA_POLL_INTERVAL_SECONDS`).
+- Script `backend/scripts/tuya_probe.py` para diagnosticar las APIs disponibles sin exponer secretos.
+- Panel **Cámara PTZ Tuya** en el dashboard (estado, eventos, pad PTZ, snapshot).
+- Documentación: arquitectura híbrida, informe de APIs Tuya, guía de integración, reconocimiento facial futuro, seguridad, radar con servo SG90 y roadmap IA.
+- Cabeceras de seguridad HTTP en el backend.
+
+### Cambiado
+
+- `httpx` y `cryptography` pasan a ser dependencias de ejecución del backend.
+- `render.yaml` y `docker-compose.yml` declaran las variables de Tuya sin valores (secretos fuera del repo).
+
 ## [3.0.0] - 2026-11-05
 
 ### Añadido
