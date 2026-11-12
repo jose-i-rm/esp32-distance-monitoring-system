@@ -4,7 +4,7 @@ Recorrido de una medición desde el sensor hasta el dashboard.
 
 ```mermaid
 flowchart TD
-    A([ESP32-CAM<br/>ciclo cada 30 s]) --> B[Lectura HC-SR04<br/>distancia en cm]
+    A([ESP32-S3<br/>ciclo cada 30 s]) --> B[Lectura HC-SR04<br/>distancia en cm]
     B --> C[Timestamp NTP]
     C --> D[JSON<br/>timestamp + distance_cm]
     D --> E[HTTP POST /api/v1/measurements<br/>cabecera X-API-Key]

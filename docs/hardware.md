@@ -1,89 +1,83 @@
 # Hardware
 
+> **Migración (v4.1):** el origen de datos es ahora la **ESP32-S3 N16R8**. La ESP32-CAM AI Thinker ya no se usa. Ver [migracion-esp32-s3.md](migracion-esp32-s3.md).
+
 ## 1. Lista de materiales
 
 | # | Componente | Cantidad | Descripción |
 |---|-----------|----------|-------------|
-| 1 | ESP32-CAM AI Thinker | 1 | SoC ESP32 dual core 240 MHz, WiFi 2.4 GHz, Bluetooth, cámara OV2640, 4 MB PSRAM. |
-| 2 | ESP32-CAM-MB | 1 | Placa programadora con conversor USB-serie CH340 y botón IO0/RESET. |
+| 1 | ESP32-S3 N16R8 (DevKitC-1 compatible) | 1 | SoC ESP32-S3 dual core 240 MHz, WiFi 2.4 GHz, BLE 5, **16 MB flash**, **8 MB PSRAM octal**. Dos USB-C: **COM** (CH343) y **USB** nativo. |
+| 2 | Placa de expansión ESP32-S3 | 1 | Por cada GPIO ofrece una fila **negra (GND) / roja (VCC) / amarilla (señal)**. |
 | 3 | HC-SR04 | 1 | Sensor ultrasónico, rango 2–400 cm, resolución ~0.3 cm, ángulo ~15°. |
-| 4 | Cables Dupont | 4 | Rojo, negro, amarillo, verde. |
-| 5 | Cable Micro-USB de **datos** | 1 | Los cables solo de carga no permiten programar. |
+| 4 | Cables Dupont | 4 | Amarillo, marrón, naranja, rojo. |
+| 5 | Cable USB-C de **datos** | 1 | Los cables solo de carga no permiten programar. |
 | 6 | Red WiFi 2.4 GHz | — | El ESP32 no soporta redes de 5 GHz. |
 
 ## 2. Conexiones
 
-| HC-SR04 | ESP32-CAM | Color | Dirección |
-|---------|-----------|-------|-----------|
-| VCC | 5V | 🔴 Rojo | Alimentación |
-| GND | GND | ⚫ Negro | Tierra común |
-| TRIG | GPIO13 | 🟡 Amarillo | ESP32 → Sensor |
-| ECHO | GPIO14 | 🟢 Verde | Sensor → ESP32 |
+| HC-SR04 | ESP32-S3 N16R8 | Color | Dirección |
+|---------|----------------|-------|-----------|
+| VCC | 3V3 | 🟡 Amarillo | Alimentación |
+| GND | GND | 🟤 Marrón | Tierra común |
+| TRIG | GPIO12 | 🟠 Naranja | ESP32 → Sensor |
+| ECHO | GPIO13 | 🔴 Rojo | Sensor → ESP32 |
 
 ```mermaid
 flowchart LR
-    VCC[HC-SR04 VCC] -- Rojo --- V5[ESP32-CAM 5V]
-    GND1[HC-SR04 GND] -- Negro --- GND2[ESP32-CAM GND]
-    TRIG[HC-SR04 TRIG] -- Amarillo --- G13[GPIO13]
-    ECHO[HC-SR04 ECHO] -- Verde --- G14[GPIO14]
-    linkStyle 0 stroke:#ef4444,stroke-width:3px
-    linkStyle 1 stroke:#111827,stroke-width:3px
-    linkStyle 2 stroke:#eab308,stroke-width:3px
-    linkStyle 3 stroke:#22c55e,stroke-width:3px
+    VCC[HC-SR04 VCC] -- Amarillo --- V33[ESP32-S3 3V3]
+    GND1[HC-SR04 GND] -- Marrón --- GND2[ESP32-S3 GND]
+    TRIG[HC-SR04 TRIG] -- Naranja --- G12[GPIO12]
+    ECHO[HC-SR04 ECHO] -- Rojo --- G13[GPIO13]
+    linkStyle 0 stroke:#eab308,stroke-width:3px
+    linkStyle 1 stroke:#78350f,stroke-width:3px
+    linkStyle 2 stroke:#f97316,stroke-width:3px
+    linkStyle 3 stroke:#ef4444,stroke-width:3px
 ```
+
+> En la placa de expansión, TRIG y ECHO van en la **columna amarilla (señal)** de IO12 e IO13; la hilera amarilla larga junto al módulo replica los mismos pines y también es válida. **Nunca** conecte una señal a la columna roja (VCC).
 
 Diagrama completo: [../diagrams/03-conexion-hardware.md](../diagrams/03-conexion-hardware.md).
 
-## 3. Pinout relevante de la ESP32-CAM AI Thinker
+## 3. Pines de la ESP32-S3 N16R8
 
-```
-                 ┌───────────────────────┐
-           5V  ──┤ ●                   ● ├── 3V3
-          GND  ──┤ ●                   ● ├── GPIO16 (PSRAM)
-        GPIO12 ──┤ ●                   ● ├── GPIO0  (BOOT)
-   ▶    GPIO13 ──┤ ●   ESP32-CAM       ● ├── GND
-   ▶    GPIO15 ──┤ ●   AI Thinker      ● ├── VCC (3.3/5V out)
-   ▶    GPIO14 ──┤ ●                   ● ├── GPIO3  (U0RXD)
-         GPIO2 ──┤ ●                   ● ├── GPIO1  (U0TXD)
-         GPIO4 ──┤ ● (LED flash)       ● ├── GND
-                 └───────────────────────┘
-   ▶ = pines usados en este proyecto: GPIO13 (TRIG) y GPIO14 (ECHO)
-```
-
-> GPIO12–15 y GPIO2/4 son compartidos con la ranura microSD. **No use la tarjeta SD** mientras el HC-SR04 esté conectado a GPIO13/14, o reasigne pines.
+| GPIO | Uso en el proyecto | Observación |
+|------|--------------------|-------------|
+| GPIO12 | TRIG | GPIO de uso general. |
+| GPIO13 | ECHO | GPIO de uso general. |
+| GPIO0, 3, 45, 46 | — | *Strapping pins*: evitar. |
+| GPIO19 / 20 | — | USB nativo. |
+| GPIO26–32 | — | Flash SPI (no disponibles). |
+| GPIO35–37 | — | PSRAM octal en la variante **R8** (no disponibles). |
+| GPIO43 / 44 | — | UART0 (TX/RX) hacia el CH343 del conector COM. |
 
 ## 4. Consideraciones eléctricas
 
-### 4.1 Nivel lógico de ECHO (importante)
+### 4.1 Nivel lógico de ECHO
 
-El HC-SR04 alimentado a 5 V devuelve un pulso de **5 V** en ECHO, mientras que los GPIO del ESP32 están especificados para **3.3 V** máximo. La conexión directa suele funcionar en la práctica, pero opera fuera de especificación y puede degradar el pin a largo plazo.
+Los GPIO de la ESP32-S3 admiten **3.3 V máximo** (no toleran 5 V). Con el HC-SR04 alimentado a **3V3**, ECHO entrega ≤ 3.3 V y se conecta **directamente** a GPIO13. Verificado en hardware: lecturas estables de 166.6 cm.
 
-**Recomendación:** añadir un divisor resistivo en la línea ECHO:
+Si su módulo HC-SR04 no responde a 3V3 (el monitor muestra `Sin eco del sensor` con el cableado correcto), es una variante solo de 5 V: aliméntelo desde **5V** y añada un divisor en ECHO:
 
 ```
-HC-SR04 ECHO ──[ 1 kΩ ]──┬──► GPIO14
+HC-SR04 ECHO ──[ 1 kΩ ]──┬──► GPIO13
                          │
                       [ 2 kΩ ]
                          │
                         GND
 ```
 
-V<sub>GPIO</sub> = 5 V × 2 kΩ / (1 kΩ + 2 kΩ) ≈ **3.33 V**.
-
-Alternativas: conversor de nivel bidireccional (BSS138) o sensor compatible con 3.3 V (HC-SR04P, RCWL-1601).
+V<sub>GPIO</sub> = 5 V × 2 kΩ / (1 kΩ + 2 kΩ) ≈ **3.33 V**. Alternativas: conversor de nivel (BSS138) o sensor HC-SR04P / RCWL-9610 (3–5.5 V).
 
 ### 4.2 Alimentación
 
-- La ESP32-CAM requiere picos de hasta **~310 mA** al transmitir por WiFi (más con la cámara activa). Use un puerto USB capaz de entregar al menos 500 mA.
-- Si aparecen mensajes `Brownout detector was triggered`, use otra fuente o un cable USB más corto/grueso.
+- La ESP32-S3 requiere picos de ~350 mA al transmitir por WiFi. Use un puerto USB capaz de entregar al menos 500 mA.
+- Si aparece `Brownout detector was triggered`, use otra fuente o un cable USB-C más corto/grueso.
 
-### 4.3 Programación con ESP32-CAM-MB
+### 4.3 Programación
 
-1. Inserte la ESP32-CAM en la placa MB (antena hacia afuera del conector USB).
-2. Conecte el cable Micro-USB de datos al PC.
-3. Si el IDE no entra en modo de carga automáticamente: mantenga **IO0**, pulse y suelte **RST**, suelte **IO0**.
-4. Tras subir el firmware pulse **RST** para ejecutar.
-
+1. Conecte el cable USB-C de datos al conector **COM** (chip CH343; en Windows aparece como `Dispositivo serie USB`, p. ej. COM7).
+2. Arduino IDE → **ESP32S3 Dev Module**, *Flash Size* 16MB, *PSRAM* OPI, *USB CDC On Boot* **Disabled** (para ver el monitor serie por el conector COM).
+3. Si la carga se queda en `Connecting...` o `Running stub flasher...`: desconecte y reconecte el USB-C. Si persiste: mantenga **BOOT**, pulse y suelte **RST**, suelte **BOOT**, o cargue con `esptool --no-stub` (ver [migracion-esp32-s3.md](migracion-esp32-s3.md#7-notas-de-carga-placas-esp32-s3-con-ch343)).
 ## 5. Principio de medición
 
 ```
@@ -99,5 +93,5 @@ distancia (cm) = tiempo_eco (µs) × 0.0343 (cm/µs) / 2
 | Componente | Pin sugerido | Notas |
 |-----------|--------------|-------|
 | Servo SG90 | GPIO15 (PWM, LEDC) | Alimentar desde 5V externo con GND común; picos de ~250 mA. |
-| Cámara OV2640 | Bus interno | Ya integrada en la ESP32-CAM; requiere PSRAM. |
-| LED flash | GPIO4 | Integrado; el firmware lo mantiene apagado. |
+| Cámara | — | La ESP32-S3 N16R8 no integra cámara; la vigilancia visual la aporta la cámara PTZ Tuya. |
+| LED RGB | GPIO48 o GPIO38 (según la revisión de la placa) | Integrado; no lo usa el firmware. |

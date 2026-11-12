@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/).
 
+## [4.1.0] - 2026-11-12
+
+### Cambiado
+
+- **Origen de datos migrado de la ESP32-CAM AI Thinker a la ESP32-S3 N16R8.** HC-SR04 en TRIG GPIO12 / ECHO GPIO13, alimentado a 3V3 (sin divisor).
+- El firmware reutiliza **sin cambios** el endpoint (`PATCH` multiruta a Firebase Realtime Database), la autenticación (Firebase Auth, cuenta `esp32-cam-01@esp32-distance.iot`) y el JSON. Sin cambios en Firebase, reglas ni contratos de API.
+- `DEVICE_ID` (campo `device`) pasa a `esp32-s3-01`; las lecturas históricas conservan `esp32-cam-01`.
+- Integrada la rama `feature/tuya-ptz-hybrid-surveillance` (PTZ Tuya, eventos humanoid detection, panel del dashboard).
+
+### Añadido
+
+- [docs/migracion-esp32-s3.md](docs/migracion-esp32-s3.md): endpoint real, JSON capturado, campos obligatorios, pruebas en hardware y compatibilidad con el HC-SR04.
+
 ## [4.0.0] - 2026-11-11
 
 ### Añadido

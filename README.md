@@ -2,11 +2,11 @@
 
 # 📡 ESP32 Distance Monitoring System
 
-**Sistema IoT de monitoreo de distancias basado en ESP32-CAM y HC-SR04 con sincronización NTP, transmisión WiFi y almacenamiento en Firebase.**
+**Sistema IoT de monitoreo de distancias basado en ESP32-S3 N16R8 y HC-SR04 con sincronización NTP, transmisión WiFi y almacenamiento en Firebase.**
 
 ### 🔴 [Ver el proyecto en vivo → jose-i-rm.github.io/esp32-distance-monitoring-system](https://jose-i-rm.github.io/esp32-distance-monitoring-system/)
 
-![ESP32](https://img.shields.io/badge/ESP32--CAM-AI%20Thinker-E7352C?logo=espressif&logoColor=white)
+![ESP32](https://img.shields.io/badge/ESP32--S3-N16R8-E7352C?logo=espressif&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-Realtime%20Database-FFCA28?logo=firebase&logoColor=black)
 ![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?logo=chartdotjs&logoColor=white)
 ![Excel](https://img.shields.io/badge/Exportar-Excel%20.xlsx-217346?logo=microsoftexcel&logoColor=white)
@@ -21,14 +21,16 @@
 
 ## 📖 Introducción
 
-**ESP32 Distance Monitoring System** es una solución IoT de extremo a extremo. Un sensor ultrasónico **HC-SR04**, conectado a una **ESP32-CAM AI Thinker**, mide la distancia **cada 30 segundos**. La ESP32 marca cada lectura con la hora real (**NTP**) y la envía por **WiFi/HTTPS** a **Firebase Realtime Database**. Un **dashboard web** público muestra los datos y permite **descargarlos en Excel**.
+**ESP32 Distance Monitoring System** es una solución IoT de extremo a extremo. Un sensor ultrasónico **HC-SR04**, conectado a una **ESP32-S3 N16R8**, mide la distancia **cada 30 segundos**. La ESP32 marca cada lectura con la hora real (**NTP**) y la envía por **WiFi/HTTPS** a **Firebase Realtime Database**. Un **dashboard web** público muestra los datos y permite **descargarlos en Excel**.
 
-**Novedad v3:** cuando la distancia cambia **10 cm o más** entre dos lecturas consecutivas, la ESP32 registra una **alerta** y el dashboard la recibe **en tiempo real** con **sonido y mensaje**.
+**Novedad v4.1:** el origen de datos migró de la ESP32-CAM AI Thinker a la **ESP32-S3 N16R8**, reutilizando sin cambios el endpoint, la autenticación y el JSON de Firebase. Ver [docs/migracion-esp32-s3.md](docs/migracion-esp32-s3.md).
+
+**v3:** cuando la distancia cambia **10 cm o más** entre dos lecturas consecutivas, la ESP32 registra una **alerta** y el dashboard la recibe **en tiempo real** con **sonido y mensaje**.
 
 ```
-2026-11-01 11:08:55 | Distancia: 214.05 cm
+2026-11-12 09:41:55 | Distancia: 166.13 cm
   -> Guardado en Firebase
-2026-11-01 11:09:25 | Distancia: 4.92 cm
+2026-11-12 09:42:25 | Distancia: 166.63 cm
   -> Guardado en Firebase
 ```
 
@@ -58,7 +60,7 @@ Actualización inmediata por **streaming** de Firebase (Server-Sent Events) y re
 
 **Específicos:**
 
-1. Adquirir mediciones del HC-SR04 con la ESP32-CAM y marcarlas con hora real sincronizada por NTP.
+1. Adquirir mediciones del HC-SR04 con la ESP32-S3 y marcarlas con hora real sincronizada por NTP.
 2. Transmitir las mediciones cada 30 s por HTTPS a Firebase con autenticación del dispositivo.
 3. Persistir el histórico de forma permanente en Firebase Realtime Database.
 4. Visualizar distancia actual, histórico, gráfico temporal y estado del dispositivo en un dashboard responsive.
@@ -69,7 +71,7 @@ Actualización inmediata por **streaming** de Firebase (Server-Sent Events) y re
 
 ```mermaid
 flowchart TD
-    HC["HC-SR04<br/>Sensor ultrasónico"] -->|TRIG GPIO13 / ECHO GPIO14| ESP["ESP32-CAM<br/>WiFi + NTP"]
+    HC["HC-SR04<br/>Sensor ultrasónico"] -->|TRIG GPIO12 / ECHO GPIO13| ESP["ESP32-S3 N16R8<br/>WiFi + NTP"]
     ESP -->|"1. signInWithPassword (cada ~55 min)"| AUTH["Firebase Authentication<br/>cuenta del dispositivo"]
     ESP -->|"2. HTTPS PATCH cada 30 s<br/>?auth=idToken"| DB[("Firebase Realtime Database<br/>/measurements · /alerts · /stats")]
     DB -->|"HTTPS GET + streaming SSE de /stats"| UI["Dashboard · GitHub Pages<br/>HTML5 · JS · Chart.js · SheetJS"]
@@ -79,7 +81,7 @@ flowchart TD
 
 | Capa | Tecnología | Hosting |
 |------|-----------|---------|
-| Borde | ESP32-CAM AI Thinker + HC-SR04 (Arduino, `WiFiClientSecure` + `HTTPClient`) | Red WiFi doméstica |
+| Borde | ESP32-S3 N16R8 + HC-SR04 (Arduino, `WiFiClientSecure` + `HTTPClient`) | Red WiFi doméstica |
 | Autenticación | Firebase Authentication (correo/contraseña del dispositivo) | Firebase (Spark, gratis) |
 | Datos | Firebase Realtime Database + reglas de seguridad | Firebase (Spark, gratis) |
 | Frontend | HTML5, CSS3, Vanilla JavaScript, Chart.js, SheetJS | GitHub Pages |
@@ -118,7 +120,7 @@ DB --> Dashboard
 
 | Fuente | Qué aporta | Canal hacia FastAPI |
 |--------|-----------|---------------------|
-| Radar ESP32 + HC-SR04 + SG90 | Distancia (y ángulo, con el servo) cada 30 s con hora NTP | `POST /api/v1/measurements` (`X-API-Key` del dispositivo) |
+| Radar ESP32 + HC-SR04 + SG90 | Distancia (y ángulo, con el servo) cada 30 s con hora NTP | Hoy: Firebase (`PATCH` multiruta, ver [migración](docs/migracion-esp32-s3.md)). Previsto: `POST /api/v1/measurements` (`X-API-Key` del dispositivo) |
 | Cámara PTZ Tuya | Estado, **detección humanoide**, **sonido anormal**, alarmas; control PTZ | Tuya OpenAPI firmada (`TuyaClient`) → `/api/camera/*` |
 | FastAPI | Normaliza, deduplica y guarda en PostgreSQL (`measurements`, `camera_events`) | — |
 | Dashboard | Radar (Firebase) + panel **Cámara PTZ Tuya** | HTTPS + `X-API-Key` de administración |
@@ -169,7 +171,7 @@ El HC-SR04 montado sobre un **servo SG90** convierte el medidor de distancia en 
 
 | Elemento | Conexión / valor |
 |----------|------------------|
-| HC-SR04 | TRIG → GPIO13 · ECHO → GPIO14 (divisor 1 kΩ/2 kΩ) |
+| HC-SR04 | TRIG → GPIO12 · ECHO → GPIO13 (VCC 3V3, sin divisor) |
 | Servo SG90 | Señal → **GPIO15** (PWM LEDC 50 Hz, librería `ESP32Servo`) · alimentación **5 V externa** con GND común (picos ~250 mA) |
 | Barrido | 0° → 180° en pasos de 15° (13 posiciones), ~300 ms de asentamiento por paso |
 | Medición | Mediana de 3 lecturas por ángulo; hora NTP |
@@ -224,7 +226,7 @@ y requisitos de privacidad: [docs/reconocimiento-facial.md](docs/reconocimiento-
       "ts": "2026-11-01T11:08:55-05:00",
       "distance_cm": 214.05,
       "received_at": 1793553553502,
-      "device": "esp32-cam-01"
+      "device": "esp32-s3-01"
     }
   },
   "alerts": {
@@ -237,7 +239,7 @@ y requisitos de privacidad: [docs/reconocimiento-facial.md](docs/reconocimiento-
       "type": "acercamiento",
       "threshold_cm": 10.0,
       "received_at": 1793553583410,
-      "device": "esp32-cam-01"
+      "device": "esp32-s3-01"
     }
   },
   "stats": {
@@ -255,7 +257,7 @@ y requisitos de privacidad: [docs/reconocimiento-facial.md](docs/reconocimiento-
 | `ts` | Fecha y hora local del dispositivo (ISO 8601, UTC-5). |
 | `distance_cm` | Distancia medida, 2 decimales. |
 | `received_at` | Hora del servidor de Firebase al recibir la lectura (ms). |
-| `device` | Identificador del dispositivo. |
+| `device` | Etiqueta del dispositivo: `esp32-s3-01` desde la migración (las lecturas históricas conservan `esp32-cam-01`). |
 | `previous_cm` / `delta_cm` | (Alertas) Lectura anterior y cambio `actual − anterior`; negativo = acercamiento. |
 | `type` / `threshold_cm` | (Alertas) `acercamiento` o `alejamiento` y umbral aplicado (10 cm). |
 
@@ -263,22 +265,22 @@ y requisitos de privacidad: [docs/reconocimiento-facial.md](docs/reconocimiento-
 
 | Componente | Función |
 |-----------|---------|
-| **ESP32-CAM AI Thinker** | Microcontrolador con WiFi, cámara OV2640 y PSRAM. |
-| **ESP32-CAM-MB** | Programador USB-serie (CH340) y alimentación. |
-| **HC-SR04** | Sensor ultrasónico de distancia (2–400 cm). |
-| **Cable Micro-USB de datos** | Programación y alimentación. |
+| **ESP32-S3 N16R8** | Microcontrolador dual core 240 MHz con WiFi, 16 MB flash y 8 MB PSRAM octal (sustituye a la ESP32-CAM AI Thinker). |
+| **Placa de expansión ESP32-S3** | Hileras GND / VCC / señal por cada GPIO. |
+| **HC-SR04** | Sensor ultrasónico de distancia (2–400 cm), alimentado a 3V3. |
+| **Cable USB-C de datos** | Programación y alimentación (conector COM, chip CH343). |
 | **Red WiFi 2.4 GHz** | Conectividad a Internet. |
 
 Detalle técnico: [docs/hardware.md](docs/hardware.md).
 
 ## 🔌 Esquema de conexiones
 
-| HC-SR04 | ESP32-CAM | Cable |
-|---------|-----------|-------|
-| VCC | 5V | 🔴 Rojo |
-| GND | GND | ⚫ Negro |
-| TRIG | GPIO13 | 🟡 Amarillo |
-| ECHO | GPIO14 | 🟢 Verde |
+| HC-SR04 | ESP32-S3 N16R8 | Cable |
+|---------|----------------|-------|
+| VCC | 3V3 | 🟡 Amarillo |
+| GND | GND | 🟤 Marrón |
+| TRIG | GPIO12 | 🟠 Naranja |
+| ECHO | GPIO13 | 🔴 Rojo |
 
 ```mermaid
 flowchart LR
@@ -288,23 +290,23 @@ flowchart LR
         ECHO
         GND
     end
-    subgraph CAM["ESP32-CAM"]
-        V5["5V"]
+    subgraph S3["ESP32-S3 N16R8"]
+        V33["3V3"]
+        G12["GPIO12"]
         G13["GPIO13"]
-        G14["GPIO14"]
         G["GND"]
     end
-    VCC -- Rojo --- V5
-    GND -- Negro --- G
-    TRIG -- Amarillo --- G13
-    ECHO -- Verde --- G14
-    linkStyle 0 stroke:#ef4444,stroke-width:3px
-    linkStyle 1 stroke:#111827,stroke-width:3px
-    linkStyle 2 stroke:#eab308,stroke-width:3px
-    linkStyle 3 stroke:#22c55e,stroke-width:3px
+    VCC -- Amarillo --- V33
+    GND -- Marrón --- G
+    TRIG -- Naranja --- G12
+    ECHO -- Rojo --- G13
+    linkStyle 0 stroke:#eab308,stroke-width:3px
+    linkStyle 1 stroke:#78350f,stroke-width:3px
+    linkStyle 2 stroke:#f97316,stroke-width:3px
+    linkStyle 3 stroke:#ef4444,stroke-width:3px
 ```
 
-> ⚠️ ECHO entrega 5 V y los GPIO del ESP32 son de 3.3 V. Se recomienda un divisor resistivo 1 kΩ / 2 kΩ — ver [consideraciones eléctricas](docs/hardware.md#4-consideraciones-eléctricas).
+> ✅ Alimentado a **3V3**, ECHO entrega ≤ 3.3 V: conexión directa al GPIO13 sin divisor (los GPIO del S3 no toleran 5 V). Si su módulo no responde a 3V3 (variante solo 5 V), aliméntelo a 5V y use un divisor 1 kΩ / 2 kΩ en ECHO — ver [consideraciones eléctricas](docs/hardware.md#4-consideraciones-eléctricas).
 
 ## 📁 Estructura del repositorio
 
@@ -314,7 +316,7 @@ flowchart LR
 ├── firebase.json             # Configuración de Firebase CLI (reglas de la BD)
 ├── .firebaserc               # Proyecto Firebase por defecto
 ├── firebase/                 # Reglas de seguridad de Realtime Database
-├── firmware/                 # Sketch Arduino de la ESP32-CAM (Firebase)
+├── firmware/                 # Sketch Arduino de la ESP32-S3 N16R8 (Firebase)
 ├── frontend/                 # Dashboard HTML5 + JS + Chart.js + SheetJS (GitHub Pages)
 ├── processing/               # Pipeline ETL en Python: preprocesamiento, filtrado y transformación
 ├── .github/workflows/        # Despliegue en GitHub Pages y CI del backend alternativo
@@ -327,14 +329,14 @@ flowchart LR
 
 ## ⚙ Puesta en marcha
 
-### 1. Firmware (ESP32-CAM)
+### 1. Firmware (ESP32-S3 N16R8)
 
 1. Abra [`firmware/esp32_distance_firebase/esp32_distance_firebase.ino`](firmware/esp32_distance_firebase/esp32_distance_firebase.ino) en Arduino IDE.
 2. Copie `secrets.example.h` como `secrets.h` en la misma carpeta y complete el WiFi, la API key web de Firebase y la clave del dispositivo.
-3. Placa **AI Thinker ESP32-CAM** (core ESP32 de Espressif 3.x) → **Subir**.
+3. Placa **ESP32S3 Dev Module** (core ESP32 de Espressif 3.x), *Flash Size* 16MB, *PSRAM* OPI → **Subir**.
 4. Monitor serie a 115200 baudios: cada 30 s debe verse `-> Guardado en Firebase`.
 
-Detalle: [firmware/README.md](firmware/README.md).
+Detalle: [firmware/README.md](firmware/README.md) · Endpoint real, JSON y pruebas: [docs/migracion-esp32-s3.md](docs/migracion-esp32-s3.md).
 
 ### 2. Firebase
 
@@ -392,6 +394,7 @@ Detalle de las operaciones: [processing/README.md](processing/README.md).
 | Documento | Descripción |
 |-----------|-------------|
 | [docs/firebase.md](docs/firebase.md) | Proyecto Firebase, reglas, cuenta del dispositivo y límites del plan gratuito |
+| [docs/migracion-esp32-s3.md](docs/migracion-esp32-s3.md) | Migración ESP32-CAM → ESP32-S3: endpoint real, JSON, autenticación, pruebas y compatibilidad HC-SR04 |
 | [docs/tuya-camara.md](docs/tuya-camara.md) | Integración de la cámara PTZ Tuya: configuración, endpoints y esquema `camera_events` |
 | [docs/informe-apis-tuya.md](docs/informe-apis-tuya.md) | APIs Tuya investigadas: PTZ, vídeo, snapshot y límites de la cuenta gratuita |
 | [docs/reconocimiento-facial.md](docs/reconocimiento-facial.md) | Diseño del reconocimiento facial futuro |

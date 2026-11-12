@@ -3,6 +3,7 @@
 | Documento | Contenido |
 |-----------|-----------|
 | [firebase.md](./firebase.md) | **Backend actual:** proyecto Firebase, reglas, cuenta del dispositivo y límites. |
+| [migracion-esp32-s3.md](./migracion-esp32-s3.md) | Migración ESP32-CAM → ESP32-S3 N16R8: endpoint real, JSON, autenticación, pruebas en hardware y compatibilidad HC-SR04. |
 | [tuya-camara.md](./tuya-camara.md) | Integración de la cámara PTZ Tuya: configuración, endpoints, esquema `camera_events`. |
 | [informe-apis-tuya.md](./informe-apis-tuya.md) | Informe de APIs Tuya (PTZ, vídeo, snapshot, almacenamiento) y límites de la cuenta gratuita. |
 | [reconocimiento-facial.md](./reconocimiento-facial.md) | Diseño del reconocimiento facial futuro (lista blanca, incidentes, privacidad). |
