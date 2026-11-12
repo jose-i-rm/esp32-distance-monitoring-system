@@ -176,7 +176,7 @@ class CameraService:
         self.ptz_min_interval_seconds = ptz_min_interval_seconds
         self.ptz_max_duration_ms = ptz_max_duration_ms
         self._ptz_lock = threading.Lock()
-        self._last_ptz = 0.0
+        self._last_ptz: float | None = None
 
     # ----------------------------------------------------------------- estado
     def get_status(self) -> dict[str, Any]:
@@ -261,9 +261,11 @@ class CameraService:
     # -------------------------------------------------------------------- PTZ
     def ptz(self, *, direction: str | None = None, preset: int | None = None, duration_ms: int = 500) -> dict[str, Any]:
         with self._ptz_lock:
-            wait = self.ptz_min_interval_seconds - (time.monotonic() - self._last_ptz)
-            if wait > 0:
-                raise PtzRateLimited(wait)
+            # El primer comando nunca se limita (monotonic() puede ser menor que el intervalo tras arrancar).
+            if self._last_ptz is not None:
+                wait = self.ptz_min_interval_seconds - (time.monotonic() - self._last_ptz)
+                if wait > 0:
+                    raise PtzRateLimited(wait)
             self._last_ptz = time.monotonic()
 
             if preset is not None:

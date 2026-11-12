@@ -244,6 +244,14 @@ def test_ptz_validation_and_rate_limit(client, service):
     assert "Retry-After" in limited.headers
 
 
+def test_ptz_first_command_not_limited_right_after_boot(client, service, monkeypatch):
+    # Reproduce un servidor recién arrancado: monotonic() menor que el intervalo mínimo.
+    monkeypatch.setattr("app.integrations.tuya.camera.time.monotonic", lambda: 5.0)
+    service.ptz_min_interval_seconds = 60
+    assert client.post("/api/camera/ptz", json={"direction": "stop"}, headers=ADMIN).status_code == 200
+    assert client.post("/api/camera/ptz", json={"direction": "stop"}, headers=ADMIN).status_code == 429
+
+
 def test_stream_and_snapshot_report_missing_permissions(client, service):
     stream = client.get("/api/camera/stream", params={"type": "hls"}, headers=ADMIN)
     assert stream.status_code == 503
