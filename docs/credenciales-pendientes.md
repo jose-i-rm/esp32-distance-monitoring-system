@@ -24,7 +24,7 @@ Detalle: [firebase.md](./firebase.md).
 
 Sitio: https://jose-i-rm.github.io/esp32-distance-monitoring-system/
 
-## 3. Firmware (ESP32-CAM)
+## 3. Firmware (ESP32-S3 N16R8)
 
 Los valores reales se guardan en `secrets.h` junto al sketch (excluido de Git):
 

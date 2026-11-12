@@ -24,6 +24,12 @@ services:
       DATABASE_URL: postgresql+psycopg://esp32:esp32@db:5432/esp32_monitoring
       DEVICE_API_KEY: ${DEVICE_API_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5500}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      TUYA_ACCESS_ID: ${TUYA_ACCESS_ID:-}
+      TUYA_ACCESS_SECRET: ${TUYA_ACCESS_SECRET:-}
+      TUYA_DEVICE_ID: ${TUYA_DEVICE_ID:-}
+      TUYA_ENDPOINT: ${TUYA_ENDPOINT:-https://openapi.tuyaus.com}
+      TUYA_POLL_INTERVAL_SECONDS: ${TUYA_POLL_INTERVAL_SECONDS:-0}
       ENVIRONMENT: development
     ports:
       - "8000:8000"

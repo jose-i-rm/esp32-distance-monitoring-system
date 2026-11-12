@@ -1,8 +1,10 @@
-# Firmware (ESP32-CAM)
+# Firmware (ESP32-S3 N16R8)
 
-Sketch Arduino para la **ESP32-CAM AI Thinker** con sensor **HC-SR04**. Funciones:
+Sketch Arduino para la **ESP32-S3 N16R8** (16 MB flash, 8 MB PSRAM octal) con sensor **HC-SR04**. Sustituye a la ESP32-CAM AI Thinker como origen de datos y **reutiliza exactamente el mismo contrato con Firebase** (endpoint, autenticación y JSON). Análisis y pruebas de la migración: [../docs/migracion-esp32-s3.md](../docs/migracion-esp32-s3.md).
 
-- Mide la distancia cada **30 s** (TRIG GPIO13, ECHO GPIO14).
+Funciones:
+
+- Mide la distancia cada **30 s** (TRIG GPIO12, ECHO GPIO13, VCC 3V3).
 - Sincroniza la hora con **NTP** (UTC-5).
 - Envía cada lectura por **HTTPS** a **Firebase Realtime Database**, autenticado con la cuenta del dispositivo en Firebase Authentication.
 - **v3:** detecta en el borde los cambios de distancia ≥ **10 cm** (`UMBRAL_CAMBIO_CM`) frente a la lectura anterior y registra la alerta en Firebase.
@@ -28,17 +30,30 @@ firmware/
    | `WIFI_SSID` / `WIFI_PASSWORD` | Red WiFi 2.4 GHz |
    | `FIREBASE_API_KEY` | Consola Firebase → Configuración del proyecto → General → *Clave de API web* |
    | `FIREBASE_DB_URL` | `https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com` |
-   | `DEVICE_EMAIL` / `DEVICE_PASSWORD` | Cuenta del dispositivo en Firebase Authentication |
-   | `DEVICE_ID` | `esp32-cam-01` |
+   | `DEVICE_EMAIL` / `DEVICE_PASSWORD` | Cuenta del dispositivo en Firebase Authentication (`esp32-cam-01@esp32-distance.iot`; se reutiliza porque las reglas solo autorizan su UID) |
+   | `DEVICE_ID` | `esp32-s3-01` (valor del campo `device`) |
 
-2. Arduino IDE → Placa **AI Thinker ESP32-CAM** → **Subir** (con el ESP32-CAM-MB).
+2. Arduino IDE → Placa **ESP32S3 Dev Module** con: *Flash Size* **16MB**, *PSRAM* **OPI PSRAM**, *Partition Scheme* **16M Flash (3MB APP/9.9MB FATFS)**, *USB CDC On Boot* **Disabled** si usa el conector **COM** (CH343) o **Enabled** si usa el conector **USB** nativo.
 3. Monitor serie a **115200** baudios.
 
-Compilación por línea de comandos (opcional):
+Compilación y carga por línea de comandos (opcional, conector COM):
 
 ```bash
-arduino-cli compile --fqbn esp32:esp32:esp32cam firmware/esp32_distance_firebase
+arduino-cli compile --upload -p COM7 \
+  --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,CDCOnBoot=default,PartitionScheme=app3M_fat9M_16MB \
+  firmware/esp32_distance_firebase
 ```
+
+> Si la carga se queda en `Running stub flasher...`, desconecte y reconecte el USB y cargue con `esptool --no-stub` (ver [../docs/migracion-esp32-s3.md](../docs/migracion-esp32-s3.md#7-notas-de-carga-placas-esp32-s3-con-ch343)).
+
+## Conexiones
+
+| HC-SR04 | ESP32-S3 N16R8 |
+|---------|----------------|
+| VCC | 3V3 |
+| GND | GND |
+| TRIG | GPIO12 |
+| ECHO | GPIO13 (directo, sin divisor: el sensor alimentado a 3V3 entrega ≤ 3.3 V) |
 
 ## Salida esperada en el monitor serie
 
@@ -48,8 +63,15 @@ IP: 192.168.1.50
 Esperando sincronizacion NTP...
 Hora sincronizada
 Firebase Auth: sesion iniciada
-2026-11-01 11:08:55 | Distancia: 214.05 cm
+2026-11-12 09:41:55 | Distancia: 166.13 cm
   -> Guardado en Firebase
+2026-11-12 09:42:25 | Distancia: 166.63 cm
+  -> Guardado en Firebase
+```
+
+Si hay alerta (cambio ≥ 10 cm):
+
+```
 2026-11-01 11:09:25 | Distancia: 4.92 cm
   ** ALERTA: cambio de -209.13 cm (214.05 -> 4.92 cm)
   -> Guardado en Firebase (con alerta)
@@ -76,7 +98,7 @@ Una sola petición `PATCH {FIREBASE_DB_URL}/.json?auth=<idToken>` (escritura at�
     "ts": "2026-11-01T11:08:55-05:00",
     "distance_cm": 214.05,
     "received_at": { ".sv": "timestamp" },
-    "device": "esp32-cam-01"
+    "device": "esp32-s3-01"
   },
   "stats/latest": { "...": "mismo objeto" },
   "stats/count": { ".sv": { "increment": 1 } }
@@ -91,7 +113,7 @@ Si hay alerta, el mismo `PATCH` agrega:
     "epoch": 1793553582, "ts": "2026-11-01T11:09:25-05:00",
     "previous_cm": 214.05, "distance_cm": 4.92, "delta_cm": -209.13,
     "type": "acercamiento", "threshold_cm": 10.0,
-    "received_at": { ".sv": "timestamp" }, "device": "esp32-cam-01"
+    "received_at": { ".sv": "timestamp" }, "device": "esp32-s3-01"
   },
   "stats/last_alert": { "...": "mismo objeto" },
   "stats/alert_count": { ".sv": { "increment": 1 } }

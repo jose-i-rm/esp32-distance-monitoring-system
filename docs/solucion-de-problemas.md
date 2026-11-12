@@ -42,7 +42,7 @@
 | `Firebase Auth: error HTTP 400` con `API_KEY_INVALID` | `FIREBASE_API_KEY` mal copiada. | Consola → Configuración del proyecto → General → *Clave de API web*. |
 | `Firebase DB: error HTTP 401` repetido | UID del dispositivo distinto al de las reglas, o lectura duplicada (misma clave). | Revise el UID en `firebase/database.rules.json` y redepliegue. |
 | `Firebase DB: error HTTP 400` | Datos fuera de las reglas (p. ej. distancia > 1000). | Revise el mensaje devuelto en el monitor serie. |
-| `Sin eco del sensor` | HC-SR04 sin alimentación, cable ECHO suelto o distancia fuera de rango. | Revise el cableado (5 V, GND, GPIO13/14). |
+| `Sin eco del sensor` | HC-SR04 sin alimentación, cable ECHO suelto o distancia fuera de rango. | Revise el cableado (3V3, GND, TRIG GPIO12, ECHO GPIO13; señales en la columna amarilla de la placa de expansión). Si persiste a 3V3, el módulo puede ser solo de 5 V (ver [hardware.md](hardware.md#4-consideraciones-eléctricas)). |
 | Dashboard: "Fuera de línea" | La ESP32 no envía desde hace más de 90 s. | Revise el monitor serie, el WiFi y la alimentación. |
 | Dashboard: "Sin conexión" | Sin Internet o URL de Firebase incorrecta en ⚙ Configuración. | Pulse **Restablecer** en ⚙ Configuración. |
 | Excel: "No hay lecturas en el rango" | Fechas sin datos. | Deje las fechas vacías para descargar todo. |

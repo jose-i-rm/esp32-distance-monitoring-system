@@ -1,8 +1,9 @@
 /*
  * ESP32 Distance Monitoring System - Firmware
- * ESP32-CAM AI Thinker + HC-SR04 -> Firebase Realtime Database
+ * ESP32-S3 N16R8 + HC-SR04 -> Firebase Realtime Database
+ * (origen de datos migrado desde la ESP32-CAM AI Thinker; mismo contrato Firebase)
  *
- * - Lectura del HC-SR04 cada 30 s (TRIG GPIO13, ECHO GPIO14).
+ * - Lectura del HC-SR04 cada 30 s (TRIG GPIO12, ECHO GPIO13, VCC 3V3).
  * - Hora real sincronizada por NTP (UTC-5).
  * - Envío HTTPS a Firebase autenticado con la cuenta del dispositivo
  *   (Firebase Authentication, correo/contraseña). No requiere librerías externas.
@@ -17,8 +18,9 @@
 #include <time.h>
 #include "secrets.h"
 
-const int trigPin = 13;
-const int echoPin = 14;
+// ESP32-S3 N16R8: GPIO12/13 son de uso general (la PSRAM octal usa GPIO35-37 y la flash GPIO26-32).
+const int trigPin = 12;
+const int echoPin = 13;
 
 const unsigned long INTERVALO_MS = 30000;
 const long GMT_OFFSET_S = -5 * 3600;
@@ -177,9 +179,13 @@ float medirDistancia() {
 
 void setup() {
   Serial.begin(115200);
+  // Con "USB CDC On Boot" habilitado, espera brevemente al monitor serie USB nativo del S3.
+  unsigned long inicioSerie = millis();
+  while (!Serial && millis() - inicioSerie < 3000) delay(10);
 
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  digitalWrite(trigPin, LOW);
 
   Serial.println();
   conectarWiFi();

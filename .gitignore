@@ -11,6 +11,9 @@ venv/
 .env
 .env.*
 !.env.example
+# Salidas del diagnóstico de Tuya (pueden contener datos del dispositivo)
+tuya_probe*.json
+probe*.json
 
 # Firmware: credenciales y artefactos de compilación
 firmware/**/config.h

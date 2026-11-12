@@ -1,0 +1,8 @@
+# Configuraci?n de gitleaks (workflow "Secret scan").
+[extend]
+useDefault = true
+
+[allowlist]
+description = "UIDs de Firebase Auth en las reglas de seguridad: identificadores p?blicos, no secretos"
+regexTarget = "line"
+regexes = ['''auth\.uid === '[A-Za-z0-9]{20,40}'''']

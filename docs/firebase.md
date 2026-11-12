@@ -8,7 +8,7 @@ El sistema usa **Firebase Realtime Database** como backend: almacena las lectura
 | Consola | https://console.firebase.google.com/project/esp32-distance-jirm-450f1 |
 | Base de datos | `https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com` (us-central1) |
 | Autenticación | Correo/contraseña; registro público **deshabilitado** |
-| Cuenta del dispositivo | `esp32-cam-01@esp32-distance.iot` (UID `jz0Com63Fkam7s5IuOkolcWOdAL2`) |
+| Cuenta del dispositivo | `esp32-cam-01@esp32-distance.iot` (UID `jz0Com63Fkam7s5IuOkolcWOdAL2`). Desde v4.1 la usa la **ESP32-S3 N16R8** (campo `device` = `esp32-s3-01`); ver [migracion-esp32-s3.md](migracion-esp32-s3.md) |
 | Reglas | [`firebase/database.rules.json`](../firebase/database.rules.json) |
 
 > La **API key web** y la URL de la base de datos no son secretas (identifican el proyecto). La **contraseña del dispositivo** sí lo es: solo vive en `secrets.h` de la placa, que está excluido de Git.
@@ -17,7 +17,7 @@ El sistema usa **Firebase Realtime Database** como backend: almacena las lectura
 
 ```mermaid
 sequenceDiagram
-    participant E as ESP32-CAM
+    participant E as ESP32-S3
     participant A as Firebase Auth
     participant D as Realtime Database
     E->>A: POST accounts:signInWithPassword (email, password)
