@@ -125,13 +125,13 @@ Restricción única `(device_id, event_time, code, event_type)` → la sincroniz
 
 La sección **Cámara PTZ Tuya** de [`frontend/index.html`](../frontend/index.html)
 ([`js/camera.js`](../frontend/js/camera.js)) muestra el estado, los últimos eventos (sin los
-cambios de parámetros), un pad PTZ de 8 direcciones + stop, el botón *Snapshot* y *Sincronizar*.
+cambios de parámetros), un pad PTZ de 8 direcciones + stop, **vídeo en vivo**, **Tomar foto** / **Descargar foto** y *Sincronizar*.
 Pide la URL del backend y la clave de administración; la clave se guarda solo en
 `sessionStorage`. El origen del dashboard debe estar en `CORS_ORIGINS`.
 
 ## 6. Próximos pasos
 
-1. Autorizar *IoT Video Live Stream* en el proyecto → habilita `/stream` y el snapshot por ffmpeg.
+1. ~~Autorizar *IoT Video Live Stream* en el proyecto~~ ✅ Hecho (2026-11-12): `/stream` (HLS/RTSP/FLV/RTMP) y WebRTC responden OK. El dashboard reproduce el HLS con hls.js (Tuya lo sirve con `Access-Control-Allow-Origin: *`, H.264 + AAC) y toma las fotos del propio vídeo. Los primeros segundos Tuya emite una pantalla negra de «conectando»; el panel no guarda fotos de esa pantalla.
 2. Reproducir HLS en el dashboard con `hls.js` (URL pedida al backend en cada sesión).
 3. Sustituir el sondeo por **Message Service (Pulsar)** (`tuya-connector-python`) para recibir
    eventos en tiempo real sin consumir la cuota de llamadas.

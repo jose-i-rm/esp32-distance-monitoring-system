@@ -13,8 +13,12 @@ window.APP_CONFIG = {
   // Debe coincidir con UMBRAL_CAMBIO_CM del firmware (solo se usa para mostrar la regla).
   ALERT_THRESHOLD_CM: 10,
   ALERTS_LIMIT: 20,
-  // Backend FastAPI para la cámara PTZ Tuya (vacío = el usuario lo indica en el panel).
+  // Backend FastAPI para la cámara PTZ Tuya (Render). El usuario puede cambiarla en el panel.
   // La clave de administración NUNCA se configura aquí: se introduce en el panel.
-  CAMERA_API_URL: "",
+  CAMERA_API_URL: "https://esp32-distance-api.onrender.com",
   CAMERA_REFRESH_SECONDS: 30,
+  // Radar: rumbo fijo del sensor (sin servo), lecturas del rastro y cambio mínimo para indicar movimiento.
+  RADAR_BEARING_DEG: 90,
+  RADAR_TRAIL: 10,
+  RADAR_TREND_CM: 2,
 };

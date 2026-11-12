@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/).
 
+## [4.2.0] - 2026-11-12
+
+### Añadido
+
+- **Radar del HC-SR04** en el dashboard (`frontend/js/radar.js`): barrido clásico, eco sobre el rumbo fijo del sensor y rastro de las últimas 10 lecturas con tendencia (se acerca / se aleja / estable), cambio y velocidad.
+- **Cámara PTZ en el dashboard:** vídeo en vivo (HLS con hls.js), **Tomar foto** desde el vídeo con descarga, y pad PTZ. Detecta la pantalla de «conectando» de Tuya para no guardar fotos vacías.
+- Firmware: **watchdog** de 120 s y límites de handshake TLS (15 s) y conexión HTTP (10 s). Evitan bloqueos como el observado (sin envíos entre 09:47 y 10:02).
+
+### Cambiado
+
+- Backend desplegable en **Render como Docker** con `ffmpeg` y SQLite (`render.yaml`). Las PostgreSQL gratuitas de Render expiran a los 30 días.
+- `CAMERA_API_URL` apunta a `https://esp32-distance-api.onrender.com`.
+- Rama `main` protegida contra force-push y borrado.
+
+### Nota
+
+- El radar y la PTZ funcionan de forma independiente; la orientación automática de la cámara hacia el sensor llegará con el servo SG90.
+
 ## [4.1.0] - 2026-11-12
 
 ### Cambiado

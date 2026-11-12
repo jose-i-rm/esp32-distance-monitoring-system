@@ -51,6 +51,8 @@
 | **Descarga en Excel** | Archivo `.xlsx` con hojas **Lecturas** y **Resumen**. Puede filtrarse por rango de fechas o incluir el histórico completo. |
 | **Alertas en tiempo real** | Banner con mensaje y **sonido** (botón *Activar sonido*, requisito del navegador) cuando la distancia cambia ≥ 10 cm. |
 | **Historial de alertas** | Tabla con hora, distancia anterior, actual, cambio y tipo (acercamiento/alejamiento); las lecturas con alerta se marcan en rojo en el gráfico. |
+| **Radar** | Radar clásico con barrido: el eco se dibuja a la distancia medida sobre el rumbo del sensor y un rastro de las últimas 10 lecturas muestra si el objeto **se acerca** (rojo) o se aleja, con cambio y velocidad. |
+| **Cámara PTZ Tuya** | **Vídeo en vivo**, **tomar y descargar fotos**, pad PTZ de 8 direcciones y eventos (detección humanoide, sonido anormal). Requiere el backend en Render y la clave de administración. |
 
 Actualización inmediata por **streaming** de Firebase (Server-Sent Events) y refresco de respaldo cada 15 s.
 
@@ -149,8 +151,8 @@ Módulo [`backend/app/integrations/tuya`](backend/app/integrations/tuya): client
 |-----------|--------|
 | Estado, parámetros y eventos (humanoid detection, abnormal sound, online) | ✅ Funciona |
 | PTZ (`ptz_control`, `ptz_stop`, `ipc_preset_action`) | ✅ Funciona |
-| Vídeo en vivo (HLS/RTSP/WebRTC) | ⏳ Requiere autorizar *IoT Video Live Stream* en el proyecto |
-| Snapshot / imágenes de alarma | ⏳ Requiere Live Stream o la API de imágenes de alarma |
+| Vídeo en vivo (HLS/RTSP/WebRTC) | ✅ Funciona (*IoT Video Live Stream* autorizado; H.264 + AAC, el HLS de la nube llega en SD) |
+| Fotos | ✅ Desde el vídeo en vivo (navegador) o con ffmpeg en el backend; la API de imágenes de alarma sigue sin suscripción |
 | Grabaciones en la nube | ❌ Requiere plan de pago en la cámara |
 
 Configuración rápida (las credenciales van **solo** en `backend/.env`, ignorado por git):
@@ -163,7 +165,7 @@ python scripts/tuya_probe.py  # diagnóstico de APIs disponibles
 uvicorn app.main:app --reload
 ```
 
-📄 Guía: [docs/tuya-camara.md](docs/tuya-camara.md) · Informe de APIs y límites de la cuenta gratuita: [docs/informe-apis-tuya.md](docs/informe-apis-tuya.md) · Seguridad: [docs/seguridad.md](docs/seguridad.md)
+📄 Guía: [docs/tuya-camara.md](docs/tuya-camara.md) · Publicación del backend en Render (desde este repositorio): [deployment/render/README.md](deployment/render/README.md) · Informe de APIs y límites de la cuenta gratuita: [docs/informe-apis-tuya.md](docs/informe-apis-tuya.md) · Seguridad: [docs/seguridad.md](docs/seguridad.md)
 
 ## 📡 Radar Terrestre ESP32 + Servo SG90
 
@@ -192,7 +194,7 @@ la cámara PTZ hacia el sector donde el radar detecte cambios. Estado: **pendien
 | Etapa | Alcance | Prerrequisito |
 |-------|---------|---------------|
 | IA-0 | Eventos de la cámara (detección humanoide de Tuya) en PostgreSQL | ✅ Hecho |
-| IA-1 | Snapshot fiable (Live Stream + ffmpeg) | Autorizar *IoT Video Live Stream* |
+| IA-1 | Snapshot fiable (Live Stream + ffmpeg) | ✅ *IoT Video Live Stream* autorizado |
 | IA-2 | Detección de rostros en eventos `humanoid_detection` | IA-1 |
 | IA-3 | Reconocimiento facial contra lista blanca | IA-2 + consentimiento |
 | IA-4 | Incidentes, notificaciones y seguimiento PTZ automático | IA-3 |
@@ -379,7 +381,8 @@ Detalle de las operaciones: [processing/README.md](processing/README.md).
 | 5 | Procesamiento de datos (preprocesamiento, filtrado y transformación) | ✅ Completado |
 | 6 | Servo SG90: barrido angular tipo radar | 📋 Siguiente iteración |
 | 7 | **Cámara PTZ Tuya:** estado, eventos en PostgreSQL, PTZ y panel en el dashboard | ✅ Completado |
-| 8 | Vídeo en vivo y snapshot de la cámara Tuya | ⏳ Pendiente de autorizar *IoT Video Live Stream* |
+| 8 | Vídeo en vivo, fotos y PTZ desde el dashboard + radar del HC-SR04 | ✅ Completado (v4.2) |
+| 8b | Coordinación radar → PTZ (la cámara apunta hacia el sensor al detectar movimiento) | 📋 Siguiente versión (requiere servo SG90) |
 | 9 | MQTT / Tuya Message Service (eventos por *push*) | 📋 Planificado |
 | 10 | Reconocimiento facial con lista blanca e incidentes | 📐 Diseñado ([docs](docs/reconocimiento-facial.md)) |
 

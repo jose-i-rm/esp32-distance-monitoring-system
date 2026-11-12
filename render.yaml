@@ -1,35 +1,32 @@
-databases:
-  - name: esp32-monitoring-db
-    plan: free
-    databaseName: esp32_monitoring
-    user: esp32
-
+# Blueprint de Render: backend FastAPI (cámara PTZ Tuya) desplegado desde este repositorio de GitHub.
+# Se redespliega automáticamente con cada push a main que modifique backend/.
+#
+# Base de datos: SQLite en el contenedor (/tmp). Render elimina las PostgreSQL gratuitas a los 30 días;
+# los eventos de la cámara se vuelven a sincronizar desde Tuya Cloud (7 días de historial) con el sondeo.
 services:
   - type: web
     name: esp32-distance-api
-    runtime: python
+    runtime: docker
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    buildFilter:
+      paths:
+        - backend/**
     healthCheckPath: /health
     autoDeploy: true
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.8
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: esp32-monitoring-db
-          property: connectionString
+        value: sqlite:////tmp/esp32_monitoring.db
       - key: DEVICE_API_KEY
         generateValue: true
       - key: CORS_ORIGINS
         value: https://jose-i-rm.github.io
       - key: ADMIN_API_KEY
         generateValue: true
-      # Secretos de Tuya: definir en el panel de Render (sync: false = no se guardan en el repo)
+      # Secretos de Tuya: se introducen en el panel de Render (sync: false = no se guardan en el repo)
       - key: TUYA_ACCESS_ID
         sync: false
       - key: TUYA_ACCESS_SECRET

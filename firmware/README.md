@@ -85,6 +85,7 @@ Si hay alerta (cambio ≥ 10 cm):
 | Cambio ≥ `UMBRAL_CAMBIO_CM` (10 cm) frente a la lectura anterior | Registra una **alerta** en `/alerts/<epoch>` y `stats/last_alert` en la misma escritura. La primera lectura tras reiniciar no genera alerta (no hay lectura previa). |
 | WiFi caído | Reintenta conectar antes de cada envío; la lectura de ese ciclo se pierde si no hay conexión. |
 | Token expirado (1 h) | Se renueva automáticamente 5 min antes; ante un `401` inicia sesión de nuevo y reintenta una vez. |
+| Bloqueo de red (TLS/HTTP colgado) | Handshake TLS limitado a 15 s y conexión HTTP a 10 s; si aun así el `loop` se bloquea > 120 s, el **watchdog** reinicia la placa. Al arrancar imprime `Motivo del reinicio` (1 = encendido, 4/6 = watchdog, 9 = caída de tensión). |
 | Temporización | Basada en `millis()`: una lectura cada 30 s aunque el envío HTTPS tarde 1–3 s. |
 
 ## Contrato de datos

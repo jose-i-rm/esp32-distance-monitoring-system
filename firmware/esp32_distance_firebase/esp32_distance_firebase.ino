@@ -15,6 +15,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <esp_task_wdt.h>
 #include <time.h>
 #include "secrets.h"
 
@@ -25,6 +26,12 @@ const int echoPin = 13;
 const unsigned long INTERVALO_MS = 30000;
 const long GMT_OFFSET_S = -5 * 3600;
 const char* ZONA_ISO = "-05:00";
+
+// Si el loop se bloquea más de este tiempo (p. ej. un handshake TLS colgado) la placa se reinicia sola.
+const uint32_t WATCHDOG_MS = 120000;
+// Límites de red: sin ellos el handshake TLS puede esperar hasta 120 s por defecto.
+const int TLS_HANDSHAKE_S = 15;
+const int HTTP_CONNECT_MS = 10000;
 
 // Cambio mínimo entre lecturas consecutivas que genera una alerta (el ruido del sensor es < 1 cm).
 const float UMBRAL_CAMBIO_CM = 10.0;
@@ -81,10 +88,12 @@ String extraerCampo(const String& json, const char* campo) {
 bool iniciarSesionFirebase() {
   WiFiClientSecure client;
   client.setInsecure();
+  client.setHandshakeTimeout(TLS_HANDSHAKE_S);
   HTTPClient http;
 
   String url = String("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=") + FIREBASE_API_KEY;
   if (!http.begin(client, url)) return false;
+  http.setConnectTimeout(HTTP_CONNECT_MS);
   http.setTimeout(15000);
   http.addHeader("Content-Type", "application/json");
 
@@ -148,10 +157,12 @@ int enviarMedicion(time_t epoch, const char* fechaIso, float distancia, bool ale
 
   WiFiClientSecure client;
   client.setInsecure();
+  client.setHandshakeTimeout(TLS_HANDSHAKE_S);
   HTTPClient http;
 
   String url = String(FIREBASE_DB_URL) + "/.json?auth=" + idToken;
   if (!http.begin(client, url)) return -1;
+  http.setConnectTimeout(HTTP_CONNECT_MS);
   http.setTimeout(15000);
   http.addHeader("Content-Type", "application/json");
 
@@ -177,19 +188,32 @@ float medirDistancia() {
   return duration * 0.0343 / 2;
 }
 
+void iniciarWatchdog() {
+  esp_task_wdt_config_t config = {};
+  config.timeout_ms = WATCHDOG_MS;
+  config.idle_core_mask = 0;
+  config.trigger_panic = true;
+  // El core de Arduino ya inicia el watchdog de tareas; si no, se inicia aquí.
+  if (esp_task_wdt_reconfigure(&config) != ESP_OK) esp_task_wdt_init(&config);
+  esp_task_wdt_add(NULL);
+}
+
 void setup() {
   Serial.begin(115200);
   // Con "USB CDC On Boot" habilitado, espera brevemente al monitor serie USB nativo del S3.
   unsigned long inicioSerie = millis();
   while (!Serial && millis() - inicioSerie < 3000) delay(10);
 
+  iniciarWatchdog();
+  Serial.printf("\nMotivo del reinicio: %d\n", (int)esp_reset_reason());
+
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   digitalWrite(trigPin, LOW);
 
-  Serial.println();
   conectarWiFi();
   while (WiFi.status() != WL_CONNECTED) {
+    esp_task_wdt_reset();
     delay(5000);
     conectarWiFi();
   }
@@ -199,6 +223,7 @@ void setup() {
   Serial.println("Esperando sincronizacion NTP...");
   struct tm timeinfo;
   while (!getLocalTime(&timeinfo)) {
+    esp_task_wdt_reset();
     Serial.print(".");
     delay(1000);
   }
@@ -209,6 +234,7 @@ void setup() {
 }
 
 void loop() {
+  esp_task_wdt_reset();
   if (!primeraLectura && millis() - ultimaLecturaMs < INTERVALO_MS) {
     delay(50);
     return;
