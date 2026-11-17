@@ -164,7 +164,7 @@
     el.statAlerts.textContent = state.stats?.alert_count ?? state.alerts.length;
     if (!state.alerts.length) {
       const cell = body.insertRow().insertCell();
-      cell.colSpan = 5;
+      cell.colSpan = 6;
       cell.className = "empty";
       cell.textContent = "Sin alertas";
       return;
@@ -172,7 +172,8 @@
     const fragment = document.createDocumentFragment();
     state.alerts.forEach((a) => {
       const row = document.createElement("tr");
-      [formatDate(a.ts), formatCm(a.previous_cm), formatCm(a.distance_cm), signed(a.delta_cm), alertTypeLabel(a.type)]
+      [formatDate(a.ts), formatCm(a.previous_cm), formatCm(a.distance_cm), signed(a.delta_cm), alertTypeLabel(a.type),
+        Number.isFinite(a.angle_deg) ? `${a.angle_deg}°` : "—"]
         .forEach((value, i) => {
           const cell = document.createElement("td");
           cell.textContent = value;
@@ -209,6 +210,7 @@
     el.alertTitle.textContent = `${alertTypeLabel(alert.type)} detectado · ${hora}`;
     el.alertMessage.textContent =
       `La distancia cambió de ${formatCm(alert.previous_cm)} cm a ${formatCm(alert.distance_cm)} cm ` +
+      (Number.isFinite(alert.angle_deg) ? `a ${alert.angle_deg}° ` : "") +
       `(${signed(alert.delta_cm)} cm; umbral ${alert.threshold_cm ?? defaults.ALERT_THRESHOLD_CM} cm).`;
     el.alertBanner.classList.toggle("alert-near", alert.type === "acercamiento");
     el.alertBanner.hidden = false;
@@ -220,6 +222,7 @@
   // Procesa /stats (desde la consulta periódica o desde el stream) y dispara la alerta si es nueva.
   function onStats(stats) {
     state.stats = stats;
+    document.dispatchEvent(new CustomEvent("radar:sweep", { detail: { sweep: stats?.sweep, alert: stats?.last_alert } }));
     const last = stats?.last_alert;
     const epoch = last ? Number(last.epoch) : 0;
     if (state.lastAlertEpoch === null) {
@@ -463,6 +466,7 @@
         "N°": i + 1,
         "Fecha y hora (lectura)": deviceTime(m.timestamp),
         "Distancia (cm)": Number(m.distance_cm.toFixed(2)),
+        "Ángulo (°)": Number.isFinite(m.angle_deg) ? m.angle_deg : "",
         "Recibido en Firebase": m.created_at ? formatDate(m.created_at) : "",
         "Dispositivo": m.device,
         "Epoch (UTC)": m.epoch,

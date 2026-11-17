@@ -33,6 +33,7 @@
       epoch: Number(value.epoch ?? key),
       timestamp: value.ts,
       distance_cm: Number(value.distance_cm),
+      angle_deg: value.angle_deg === undefined ? null : Number(value.angle_deg),
       created_at: value.received_at ? new Date(value.received_at).toISOString() : null,
       device: value.device || "",
     };
