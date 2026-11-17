@@ -13,6 +13,7 @@
         "ts": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "distance_cm": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
         "received_at": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "angle_deg": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 180" },
         "device": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "$other": { ".validate": false }
       }
@@ -32,6 +33,7 @@
         "type": { ".validate": "newData.val() === 'acercamiento' || newData.val() === 'alejamiento'" },
         "threshold_cm": { ".validate": "newData.isNumber() && newData.val() > 0" },
         "received_at": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "angle_deg": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 180" },
         "device": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "$other": { ".validate": false }
       }
@@ -44,6 +46,9 @@
       "alert_count": { ".validate": "newData.isNumber()" },
       "latest": {
         ".validate": "newData.hasChildren(['epoch', 'ts', 'distance_cm', 'received_at'])"
+      },
+      "sweep": {
+        ".validate": "newData.hasChildren(['epoch', 'd'])"
       },
       "last_alert": {
         ".validate": "newData.hasChildren(['epoch', 'ts', 'previous_cm', 'distance_cm', 'delta_cm', 'type', 'received_at'])"

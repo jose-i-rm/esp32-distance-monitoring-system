@@ -105,15 +105,15 @@
         <div class="radar-view">
           <canvas id="radar-canvas" role="img" aria-label="Radar con la posición del objeto detectado por el HC-SR04"></canvas>
           <p id="radar-detail" class="hint">Sin datos</p>
-          <p class="hint">Sensor con rumbo fijo (90°). El barrido angular llegará con el servo SG90; por ahora la cámara PTZ y el radar funcionan de forma independiente.</p>
+          <p class="hint">Barrido real del servo (0°–180°): el área verde es espacio libre y la línea el contorno del entorno; los barridos anteriores se ven atenuados. Un acercamiento se marca en rojo en su ángulo y el servidor orienta la cámara PTZ hacia él.</p>
         </div>
         <div class="table-wrapper table-short">
           <table>
             <thead>
-              <tr><th>Hora</th><th>Distancia (cm)</th><th>Cambio (cm)</th><th>Tendencia</th></tr>
+              <tr><th>Hora</th><th>Ángulo</th><th>Distancia (cm)</th><th>Cambio (cm)</th><th>Tendencia</th></tr>
             </thead>
             <tbody id="radar-body">
-              <tr><td colspan="4" class="empty">Sin datos</td></tr>
+              <tr><td colspan="5" class="empty">Sin datos</td></tr>
             </tbody>
           </table>
         </div>
@@ -147,10 +147,10 @@
       <div class="table-wrapper table-short">
         <table>
           <thead>
-            <tr><th>Fecha y hora</th><th>Anterior (cm)</th><th>Actual (cm)</th><th>Cambio (cm)</th><th>Tipo</th></tr>
+            <tr><th>Fecha y hora</th><th>Anterior (cm)</th><th>Actual (cm)</th><th>Cambio (cm)</th><th>Tipo</th><th>Ángulo</th></tr>
           </thead>
           <tbody id="alerts-body">
-            <tr><td colspan="5" class="empty">Sin alertas</td></tr>
+            <tr><td colspan="6" class="empty">Sin alertas</td></tr>
           </tbody>
         </table>
       </div>
