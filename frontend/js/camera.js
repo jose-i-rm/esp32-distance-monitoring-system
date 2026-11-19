@@ -90,9 +90,40 @@
     return captureImages.get(id);
   }
 
+  function forgetCaptureImage(id) {
+    const cached = captureImages.get(id);
+    captureImages.delete(id);
+    if (cached) cached.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+  }
+
+  async function deleteCapture(id) {
+    if (!window.confirm("¿Borrar esta foto del servidor? No se puede deshacer.")) return;
+    try {
+      await api(`/api/camera/captures/${id}`, { method: "DELETE" });
+      forgetCaptureImage(id);
+      notify("Foto borrada.");
+      refresh();
+    } catch (error) {
+      notify(`Borrar: ${error.message}`, true);
+    }
+  }
+
+  async function deleteAllCaptures() {
+    if (!window.confirm("¿Borrar TODAS las fotos automáticas del servidor? No se puede deshacer.")) return;
+    try {
+      const { deleted } = await (await api("/api/camera/captures", { method: "DELETE" })).json();
+      [...captureImages.keys()].forEach(forgetCaptureImage);
+      notify(`Fotos borradas: ${deleted}`);
+      refresh();
+    } catch (error) {
+      notify(`Borrar: ${error.message}`, true);
+    }
+  }
+
   function renderCaptures(items) {
     const box = $("camera-captures");
     box.replaceChildren();
+    $("camera-captures-clear").hidden = !items.length;
     if (!items.length) {
       const p = document.createElement("p");
       p.className = "hint";
@@ -120,6 +151,14 @@
         (c.preset ? ` · preset ${c.preset}` : " · sin preset");
       if (c.has_image && c.detail) cap.title = c.detail;
       fig.appendChild(cap);
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "capture-delete";
+      del.title = "Borrar esta foto";
+      del.setAttribute("aria-label", "Borrar esta foto");
+      del.textContent = "🗑";
+      del.addEventListener("click", () => deleteCapture(c.id));
+      fig.appendChild(del);
       box.appendChild(fig);
     }
   }
@@ -310,6 +349,7 @@
     $("camera-live-btn").addEventListener("click", () => (live ? stopLive() : startLive()));
     $("camera-snapshot-btn").addEventListener("click", snapshot);
     $("camera-sync-btn").addEventListener("click", sync);
+    $("camera-captures-clear").addEventListener("click", deleteAllCaptures);
     start();
   });
 })();

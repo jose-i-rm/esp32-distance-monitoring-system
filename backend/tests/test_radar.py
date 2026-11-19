@@ -176,3 +176,23 @@ def test_capture_endpoints_require_key_and_serve_images(client):
     image = client.get(f"/api/camera/captures/{items[1]['id']}/image", headers=ADMIN)
     assert image.status_code == 200 and image.content == b"\xff\xd8img"
     assert client.get(f"/api/camera/captures/{items[0]['id']}/image", headers=ADMIN).status_code == 404
+
+
+def test_captures_are_returned_in_utc_and_can_be_deleted(client):
+    from app.database import get_db
+    from app.main import app
+
+    session = next(app.dependency_overrides[get_db]())
+    for epoch in (20, 21, 22):
+        session.add(RadarCapture(alert_epoch=epoch, angle_deg=90, distance_cm=50, status="ok", image=b"\xff\xd8"))
+    session.commit()
+
+    items = client.get("/api/camera/captures", headers=ADMIN).json()["items"]
+    assert items[0]["captured_at"].endswith(("Z", "+00:00"))
+
+    assert client.delete(f"/api/camera/captures/{items[0]['id']}").status_code == 401
+    assert client.delete(f"/api/camera/captures/{items[0]['id']}", headers=ADMIN).json() == {"deleted": 1}
+    assert client.delete(f"/api/camera/captures/{items[0]['id']}", headers=ADMIN).status_code == 404
+    assert client.get(f"/api/camera/captures/{items[0]['id']}/image", headers=ADMIN).status_code == 404
+    assert client.delete("/api/camera/captures", headers=ADMIN).json() == {"deleted": 2}
+    assert client.get("/api/camera/captures", headers=ADMIN).json()["items"] == []

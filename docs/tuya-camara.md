@@ -146,6 +146,8 @@ El radar (ESP32-S3 + HC-SR04 sobre servo SG90) registra cada acercamiento con su
 3. Toma una foto del vídeo en vivo con ffmpeg, descartando los primeros `SNAPSHOT_SKIP_SECONDS` (pantalla negra de «conectando» de Tuya).
 4. La guarda en `radar_captures` (últimas `RADAR_MAX_CAPTURES`). El dashboard la muestra en **Capturas automáticas del radar** (`GET /api/camera/captures`, `GET /api/camera/captures/{id}/image`).
 
+**Privacidad:** cada foto se puede borrar desde el dashboard (🗑) o todas a la vez (**Borrar todas**), con `DELETE /api/camera/captures/{id}` y `DELETE /api/camera/captures` (requieren `ADMIN_API_KEY`). El borrado es definitivo; además, en Render gratuito las fotos desaparecen con cada reinicio o despliegue.
+
 Entre capturas hay una pausa mínima de `RADAR_CAPTURE_COOLDOWN_SECONDS`. La alerta que ya existía al arrancar el servidor no se procesa.
 
 > La cámara **no admite posiciones absolutas** (solo `ptz_control` por direcciones y `ipc_preset_action` 1–6). Por eso el seguimiento usa presets.

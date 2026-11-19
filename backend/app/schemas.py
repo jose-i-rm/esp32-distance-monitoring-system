@@ -170,6 +170,16 @@ class RadarCaptureRead(BaseModel):
             return {**{k: getattr(data, k) for k in cls.model_fields if hasattr(data, k)}, "has_image": bool(data.image)}
         return data
 
+    # SQLite devuelve la fecha sin zona: se marca como UTC para que el navegador la convierta a hora local.
+    @field_validator("captured_at")
+    @classmethod
+    def ensure_utc(cls, value: datetime) -> datetime:
+        return _as_utc(value)
+
 
 class RadarCaptureList(BaseModel):
     items: list[RadarCaptureRead]
+
+
+class DeleteResult(BaseModel):
+    deleted: int
