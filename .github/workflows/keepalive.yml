@@ -1,0 +1,18 @@
+# Mantiene despierto el backend gratuito de Render (se suspende tras 15 min sin peticiones):
+# el seguimiento radar -> cámara PTZ solo funciona mientras el servicio está activo.
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: curl -fsS --max-time 90 --retry 2 https://esp32-distance-api.onrender.com/health

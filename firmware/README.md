@@ -55,6 +55,16 @@ arduino-cli compile --upload -p COM7 \
 | TRIG | GPIO12 |
 | ECHO | GPIO13 (directo, sin divisor: el sensor alimentado a 3V3 entrega ≤ 3.3 V) |
 
+| Servo SG90 | ESP32-S3 / placa de expansión |
+|------------|-------------------------------|
+| 🟠 Naranja (señal) | **IO15** (columna amarilla) |
+| 🔴 Rojo (+) | Pin **5V** del bloque de alimentación (las columnas rojas de las hileras son de 3,3 V) |
+| 🟤 Marrón (−) | **GND** |
+
+Alimente la placa con una fuente de **6,5–9 V** por el conector DC (regulador 78M05 → 5V para el servo); el USB-C sirve para programar.
+
+**Radar:** el servo barre 0°–180° en pasos de 5° (`PASO_ANGULO`), con la mediana de 3 disparos por ángulo. Cada 30 s se envía la lectura del objeto más cercano con su `angle_deg`, y cada ~12 s el barrido completo en `stats/sweep`. Las alertas son solo de **acercamiento** dentro de `ZONA_CM` (3 m): algo ≥ `UMBRAL_CAMBIO_CM` (15 cm) más cerca que todo lo visto en ese ángulo en las últimas 5 pasadas del mismo sentido de giro, y confirmado en la pasada siguiente. Las primeras 3 pasadas sirven de aprendizaje del entorno.
+
 ## Salida esperada en el monitor serie
 
 ```

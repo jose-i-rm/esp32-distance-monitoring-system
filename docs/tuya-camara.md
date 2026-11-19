@@ -136,3 +136,29 @@ Pide la URL del backend y la clave de administración; la clave se guarda solo e
 3. Sustituir el sondeo por **Message Service (Pulsar)** (`tuya-connector-python`) para recibir
    eventos en tiempo real sin consumir la cuota de llamadas.
 4. Correlacionar eventos de cámara con mediciones del radar (ver [arquitectura híbrida](../diagrams/07-arquitectura-hibrida.md)).
+
+## Seguimiento automático radar → cámara (v4.3)
+
+El radar (ESP32-S3 + HC-SR04 sobre servo SG90) registra cada acercamiento con su ángulo en Firebase (`/stats/last_alert`, campo `angle_deg`). El backend ([`app/integrations/radar.py`](../backend/app/integrations/radar.py)) lo consulta cada `RADAR_WATCH_INTERVAL_SECONDS` y, ante un acercamiento nuevo:
+
+1. Elige el **preset** de la cámara más cercano al ángulo (`PTZ_PRESET_ANGLES`) y lo invoca (`ipc_preset_action`).
+2. Espera `PTZ_SETTLE_SECONDS` a que la cámara termine de girar.
+3. Toma una foto del vídeo en vivo con ffmpeg, descartando los primeros `SNAPSHOT_SKIP_SECONDS` (pantalla negra de «conectando» de Tuya).
+4. La guarda en `radar_captures` (últimas `RADAR_MAX_CAPTURES`). El dashboard la muestra en **Capturas automáticas del radar** (`GET /api/camera/captures`, `GET /api/camera/captures/{id}/image`).
+
+Entre capturas hay una pausa mínima de `RADAR_CAPTURE_COOLDOWN_SECONDS`. La alerta que ya existía al arrancar el servidor no se procesa.
+
+> La cámara **no admite posiciones absolutas** (solo `ptz_control` por direcciones y `ipc_preset_action` 1–6). Por eso el seguimiento usa presets.
+
+### Guardar los presets en la app Tuya Smart
+
+1. Con el servo en 90° (frente), abra la cámara en **Tuya Smart / Smart Life** → control PTZ.
+2. Gire la cámara hasta que apunte a donde mira el sensor en ese ángulo y guarde la posición en **Preset / Punto de vigilancia** (número 1, 2, 3…).
+3. Repita para los ángulos que quiera cubrir. Con 5 presets se cubre el frente cada 45°: 0°, 45°, 90°, 135° y 180°.
+4. En Render → servicio → **Environment**, defina `PTZ_PRESET_ANGLES` con el número de preset y el ángulo, p. ej. `1:0,2:45,3:90,4:135,5:180`.
+
+Sin `PTZ_PRESET_ANGLES`, el backend toma la foto en la posición actual de la cámara.
+
+**Seguimiento propio de la cámara:** si `motion_tracking` está activado en la app, la cámara puede girar sola después del preset. Desactívelo si interfiere.
+
+**Render gratuito:** el servicio se suspende tras 15 min sin peticiones. El workflow [`keepalive.yml`](../.github/workflows/keepalive.yml) lo consulta cada 10 min para que el seguimiento siga activo (GitHub puede retrasar las ejecuciones programadas unos minutos).

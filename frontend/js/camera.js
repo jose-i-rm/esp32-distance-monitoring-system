@@ -80,14 +80,60 @@
     }
   }
 
+  // Las imágenes exigen la clave, así que se descargan con fetch y se muestran como blob (cacheadas por id).
+  const captureImages = new Map();
+
+  async function captureImage(id) {
+    if (!captureImages.has(id)) {
+      captureImages.set(id, api(`/api/camera/captures/${id}/image`).then((r) => r.blob()).then((b) => URL.createObjectURL(b)));
+    }
+    return captureImages.get(id);
+  }
+
+  function renderCaptures(items) {
+    const box = $("camera-captures");
+    box.replaceChildren();
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = "Aún no hay capturas. Se generan con cada acercamiento detectado por el radar.";
+      box.appendChild(p);
+      return;
+    }
+    for (const c of items) {
+      const fig = document.createElement("figure");
+      fig.className = "capture";
+      if (c.has_image) {
+        const img = document.createElement("img");
+        img.alt = `Captura a ${c.angle_deg}°`;
+        img.addEventListener("click", () => window.open(img.src, "_blank"));
+        captureImage(c.id).then((url) => { img.src = url; }).catch(() => { img.alt = "No se pudo cargar"; });
+        fig.appendChild(img);
+      } else {
+        const missing = document.createElement("div");
+        missing.className = "capture-missing";
+        missing.textContent = c.detail || "Sin imagen";
+        fig.appendChild(missing);
+      }
+      const cap = document.createElement("figcaption");
+      cap.textContent = `${formatDate(c.captured_at)} · ${c.angle_deg}° · ${c.distance_cm.toFixed(0)} cm` +
+        (c.preset ? ` · preset ${c.preset}` : " · sin preset");
+      if (c.has_image && c.detail) cap.title = c.detail;
+      fig.appendChild(cap);
+      box.appendChild(fig);
+    }
+  }
+
   async function refresh() {
     if (!refresh.done) setStatus("unknown", "Conectando… (el backend gratuito puede tardar ~1 min en despertar)");
     try {
-      const [status, events] = await Promise.all([
+      const [status, events, captures] = await Promise.all([
         api("/api/camera/status").then((r) => r.json()),
         api("/api/camera/events?limit=50").then((r) => r.json()),
+        api("/api/camera/captures?limit=12").then((r) => r.json()).catch(() => null),
       ]);
       refresh.done = true;
+      if (captures) renderCaptures(captures.items);
       setStatus(status.online ? "ok" : "error", status.online ? `${status.name} · en línea` : `${status.name} · fuera de línea`);
       renderEvents(events.items.filter((e) => e.event_type !== "dp_report").slice(0, 25));
     } catch (error) {

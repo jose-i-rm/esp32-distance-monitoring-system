@@ -170,11 +170,13 @@ class CameraService:
         *,
         ptz_min_interval_seconds: float = 1.0,
         ptz_max_duration_ms: int = 3000,
+        snapshot_skip_seconds: float = 0.0,
     ) -> None:
         self.client = client
         self.device_id = device_id
         self.ptz_min_interval_seconds = ptz_min_interval_seconds
         self.ptz_max_duration_ms = ptz_max_duration_ms
+        self.snapshot_skip_seconds = snapshot_skip_seconds
         self._ptz_lock = threading.Lock()
         self._last_ptz: float | None = None
 
@@ -301,6 +303,17 @@ class CameraService:
         )
         return result if isinstance(result, str) else result.get("url") or result.get("file_url")
 
+    def live_frame(self) -> bytes:
+        """Fotograma JPEG del vídeo en vivo (requiere *IoT Video Live Stream* y ffmpeg)."""
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            raise SnapshotUnavailable("live_stream: ffmpeg no está instalado")
+        url = self.live_stream_url("rtsp")
+        try:
+            return _grab_frame(ffmpeg, url, skip_seconds=self.snapshot_skip_seconds)
+        except (subprocess.SubprocessError, OSError) as exc:
+            raise SnapshotUnavailable(f"live_stream: ffmpeg falló ({exc.__class__.__name__})") from exc
+
     def snapshot(self, db: Session) -> Snapshot:
         """Obtiene una imagen de la cámara probando, en orden:
 
@@ -309,17 +322,12 @@ class CameraService:
         """
         reasons: list[str] = []
 
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg:
-            try:
-                url = self.live_stream_url("rtsp")
-                return Snapshot(_grab_frame(ffmpeg, url), "image/jpeg", "live_stream", datetime.now(timezone.utc))
-            except TuyaError as exc:
-                reasons.append(f"live_stream: {exc}")
-            except (subprocess.SubprocessError, OSError) as exc:
-                reasons.append(f"live_stream: ffmpeg falló ({exc.__class__.__name__})")
-        else:
-            reasons.append("live_stream: ffmpeg no está instalado")
+        try:
+            return Snapshot(self.live_frame(), "image/jpeg", "live_stream", datetime.now(timezone.utc))
+        except TuyaError as exc:
+            reasons.append(f"live_stream: {exc}")
+        except SnapshotUnavailable as exc:
+            reasons.append(str(exc))
 
         event = db.scalar(
             select(CameraEvent)
@@ -373,12 +381,16 @@ def decrypt_alarm_image(data: bytes, key: str) -> bytes:
         return padded
 
 
-def _grab_frame(ffmpeg: str, url: str, timeout: float = 20.0) -> bytes:
+def _grab_frame(ffmpeg: str, url: str, timeout: float = 20.0, skip_seconds: float = 0.0) -> bytes:
     args = [ffmpeg, "-hide_banner", "-loglevel", "error"]
     if url.startswith("rtsp"):
         args += ["-rtsp_transport", "tcp"]
-    args += ["-i", url, "-frames:v", "1", "-f", "image2", "-vcodec", "mjpeg", "pipe:1"]
-    result = subprocess.run(args, capture_output=True, timeout=timeout, check=True)  # noqa: S603
+    args += ["-i", url]
+    if skip_seconds > 0:
+        # Descarta los primeros segundos: Tuya emite una pantalla negra de "conectando" al abrir el stream.
+        args += ["-ss", f"{skip_seconds:g}"]
+    args += ["-frames:v", "1", "-f", "image2", "-vcodec", "mjpeg", "pipe:1"]
+    result = subprocess.run(args, capture_output=True, timeout=timeout + skip_seconds, check=True)  # noqa: S603
     if not result.stdout:
         raise subprocess.SubprocessError("ffmpeg no devolvió datos")
     return result.stdout

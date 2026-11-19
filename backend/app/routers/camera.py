@@ -1,12 +1,14 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_db
 from app.integrations.tuya import CameraService, TuyaError, TuyaPermissionError, get_camera_service
 from app.integrations.tuya.camera import PtzRateLimited, SnapshotUnavailable
+from app.models import RadarCapture
 from app.schemas import (
     CameraEventList,
     CameraEventRead,
@@ -14,6 +16,8 @@ from app.schemas import (
     CameraSyncResult,
     PtzCommand,
     PtzResult,
+    RadarCaptureList,
+    RadarCaptureRead,
     StreamResponse,
 )
 from app.security import verify_admin_api_key
@@ -130,3 +134,24 @@ def camera_stream(
         return StreamResponse(type=type, url=service.live_stream_url(type))
     except TuyaError as exc:
         raise _tuya_http_error(exc) from exc
+
+
+@router.get("/captures", response_model=RadarCaptureList, summary="Fotos automáticas del seguimiento radar")
+def radar_captures(limit: int = Query(20, ge=1, le=50), db: Session = Depends(get_db)) -> RadarCaptureList:
+    rows = db.scalars(
+        select(RadarCapture).order_by(RadarCapture.captured_at.desc(), RadarCapture.id.desc()).limit(limit)
+    ).all()
+    return RadarCaptureList(items=[RadarCaptureRead.model_validate(row) for row in rows])
+
+
+@router.get(
+    "/captures/{capture_id}/image",
+    summary="Imagen de una captura automática",
+    response_class=Response,
+    responses={200: {"content": {"image/jpeg": {}}}, 404: {"description": "Sin imagen"}},
+)
+def radar_capture_image(capture_id: int, db: Session = Depends(get_db)) -> Response:
+    row = db.get(RadarCapture, capture_id)
+    if row is None or not row.image:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Captura sin imagen.")
+    return Response(content=row.image, media_type="image/jpeg", headers={"Cache-Control": "no-store"})

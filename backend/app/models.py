@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Float, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy import JSON, DateTime, Float, Index, Integer, LargeBinary, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -62,3 +62,27 @@ class CameraEvent(Base):
 
     def __repr__(self) -> str:
         return f"<CameraEvent id={self.id} type={self.event_type} time={self.event_time}>"
+
+
+class RadarCapture(Base):
+    """Foto tomada automáticamente al orientar la cámara hacia un acercamiento detectado por el radar."""
+
+    __tablename__ = "radar_captures"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # epoch de la alerta en Firebase (/alerts/<epoch>): evita procesar dos veces la misma alerta.
+    alert_epoch: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    angle_deg: Mapped[int] = mapped_column(Integer, nullable=False)
+    distance_cm: Mapped[float] = mapped_column(Float, nullable=False)
+    previous_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    preset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # ok | error
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    captured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, server_default=func.now(), index=True
+    )
+
+    def __repr__(self) -> str:
+        return f"<RadarCapture id={self.id} angle={self.angle_deg} status={self.status}>"

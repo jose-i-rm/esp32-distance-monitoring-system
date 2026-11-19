@@ -37,3 +37,17 @@ services:
         value: https://openapi.tuyaus.com
       - key: TUYA_POLL_INTERVAL_SECONDS
         value: "300"
+      # Seguimiento radar -> cámara: lee /stats/last_alert de Firebase (lectura pública) cada 3 s.
+      - key: FIREBASE_DB_URL
+        value: https://esp32-distance-jirm-450f1-default-rtdb.firebaseio.com
+      - key: RADAR_WATCH_INTERVAL_SECONDS
+        value: "3"
+      # Presets guardados en la app Tuya Smart -> ángulo del servo al que apunta cada uno (p. ej. "1:0,2:45,3:90,4:135,5:180").
+      - key: PTZ_PRESET_ANGLES
+        sync: false
+      - key: PTZ_SETTLE_SECONDS
+        value: "4"
+      - key: SNAPSHOT_SKIP_SECONDS
+        value: "6"
+      - key: RADAR_CAPTURE_COOLDOWN_SECONDS
+        value: "30"

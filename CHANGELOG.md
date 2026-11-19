@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/).
 
+## [4.3.0] - 2026-11-19
+
+### Añadido
+
+- **Radar de barrido:** servo SG90 en GPIO15 (0°–180° en pasos de 5°, 37 lecturas por barrido) con el HC-SR04 encima. `angle_deg` en lecturas y alertas y el barrido completo en `stats/sweep`.
+- **Radar del dashboard** con el contorno del entorno, el espacio libre, los barridos anteriores y el último acercamiento en su ángulo. El ángulo aparece también en las tablas, el aviso y el Excel.
+- **Seguimiento automático radar → cámara PTZ:** el backend lleva la cámara al preset más cercano al ángulo del acercamiento y toma una foto. Galería **Capturas automáticas del radar** en el dashboard.
+- Workflow `keepalive.yml` para que Render gratuito no se suspenda.
+
+### Cambiado
+
+- Alertas solo de **acercamiento** dentro de 3 m, ≥ 15 cm más cerca que lo visto en ese ángulo en las últimas pasadas (por sentido de giro) y confirmadas en la pasada siguiente.
+- Reglas de Firebase: `angle_deg` (0–180) y `stats/sweep`.
+
 ## [4.2.0] - 2026-11-12
 
 ### Añadido

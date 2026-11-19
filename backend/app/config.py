@@ -41,6 +41,19 @@ class Settings(BaseSettings):
     ptz_min_interval_seconds: float = 1.0
     ptz_max_duration_ms: int = 3000
 
+    # Seguimiento radar -> cámara. El backend consulta /stats/last_alert de Firebase (lectura pública) y,
+    # ante un acercamiento nuevo, lleva la cámara al preset más cercano al ángulo y toma una foto.
+    firebase_db_url: str = ""
+    radar_watch_interval_seconds: float = 0  # 0 = desactivado
+    # Presets guardados en la app Tuya Smart y el ángulo del servo al que apunta cada uno: "1:0,2:45,3:90".
+    ptz_preset_angles: str = ""
+    # Espera tras ordenar el preset antes de capturar (la cámara tarda en girar).
+    ptz_settle_seconds: float = 4.0
+    # Segundos de vídeo que se descartan antes del fotograma (Tuya emite primero una pantalla de "conectando").
+    snapshot_skip_seconds: float = 6.0
+    radar_capture_cooldown_seconds: float = 30.0
+    radar_max_captures: int = 50
+
     @field_validator("tuya_endpoint")
     @classmethod
     def require_https_endpoint(cls, value: str) -> str:

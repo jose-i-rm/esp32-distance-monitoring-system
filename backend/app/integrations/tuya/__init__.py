@@ -27,4 +27,5 @@ def get_camera_service() -> CameraService | None:
         settings.tuya_device_id,
         ptz_min_interval_seconds=settings.ptz_min_interval_seconds,
         ptz_max_duration_ms=settings.ptz_max_duration_ms,
+        snapshot_skip_seconds=settings.snapshot_skip_seconds,
     )
