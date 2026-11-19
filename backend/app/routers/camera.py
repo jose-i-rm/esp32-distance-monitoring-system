@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app import crud
@@ -14,6 +14,7 @@ from app.schemas import (
     CameraEventRead,
     CameraStatus,
     CameraSyncResult,
+    DeleteResult,
     PtzCommand,
     PtzResult,
     RadarCaptureList,
@@ -155,3 +156,19 @@ def radar_capture_image(capture_id: int, db: Session = Depends(get_db)) -> Respo
     if row is None or not row.image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Captura sin imagen.")
     return Response(content=row.image, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+@router.delete("/captures/{capture_id}", response_model=DeleteResult, summary="Borrar una captura automática")
+def delete_radar_capture(capture_id: int, db: Session = Depends(get_db)) -> DeleteResult:
+    row = db.get(RadarCapture, capture_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La captura no existe.")
+    db.delete(row)
+    db.commit()
+    return DeleteResult(deleted=1)
+
+
+@router.delete("/captures", response_model=DeleteResult, summary="Borrar todas las capturas automáticas")
+def delete_all_radar_captures(db: Session = Depends(get_db)) -> DeleteResult:
+    result = db.execute(delete(RadarCapture))
+    db.commit()
+    return DeleteResult(deleted=result.rowcount or 0)

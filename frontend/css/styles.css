@@ -174,7 +174,12 @@ td.empty { text-align: center; color: var(--muted); padding: 2rem; }
 .camera-photo figcaption { margin-top: 0.25rem; }
 .captures-header { margin-top: 1.25rem; flex-wrap: wrap; gap: 0.5rem; }
 .captures { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
-.capture { margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.capture { margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); position: relative; }
+.capture-delete {
+  position: absolute; top: 0.35rem; right: 0.35rem; width: 2rem; height: 2rem; padding: 0; border-radius: 8px;
+  background: rgba(11, 17, 32, 0.8); border: 1px solid var(--border); color: var(--text); cursor: pointer;
+}
+.capture-delete:hover { border-color: var(--danger); color: var(--danger); }
 .capture img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000; cursor: zoom-in; }
 .capture .capture-missing { aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; padding: 0.5rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
 .capture figcaption { padding: 0.4rem 0.6rem; font-size: 0.8rem; }
