@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
+from app.integrations.radar import RadarWatcher, parse_preset_angles
 from app.integrations.tuya import TuyaError, get_camera_service
 from app.routers import camera, health, measurements
 
@@ -38,18 +39,49 @@ async def _camera_poller(interval: int) -> None:
         await asyncio.sleep(interval)
 
 
+def _radar_check_once(watcher: RadarWatcher) -> None:
+    with SessionLocal() as db:
+        watcher.check_once(db)
+
+
+async def _radar_poller(watcher: RadarWatcher, interval: float) -> None:
+    while True:
+        try:
+            await asyncio.to_thread(_radar_check_once, watcher)
+        except Exception:  # noqa: BLE001 - el seguimiento no debe detener la API
+            logger.exception("Error en el seguimiento radar -> cámara")
+        await asyncio.sleep(interval)
+
+
+def _build_radar_watcher() -> RadarWatcher | None:
+    service = get_camera_service()
+    if service is None or not settings.firebase_db_url or settings.radar_watch_interval_seconds <= 0:
+        return None
+    return RadarWatcher(
+        service,
+        settings.firebase_db_url,
+        parse_preset_angles(settings.ptz_preset_angles),
+        settle_seconds=settings.ptz_settle_seconds,
+        cooldown_seconds=settings.radar_capture_cooldown_seconds,
+        max_captures=settings.radar_max_captures,
+    )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if settings.auto_create_tables:
         Base.metadata.create_all(bind=engine)
-    poller = None
+    tasks = []
     if settings.tuya_poll_interval_seconds > 0 and settings.tuya_configured:
-        poller = asyncio.create_task(_camera_poller(max(30, settings.tuya_poll_interval_seconds)))
+        tasks.append(asyncio.create_task(_camera_poller(max(30, settings.tuya_poll_interval_seconds))))
+    watcher = _build_radar_watcher()
+    if watcher is not None:
+        tasks.append(asyncio.create_task(_radar_poller(watcher, max(1.0, settings.radar_watch_interval_seconds))))
     yield
-    if poller:
-        poller.cancel()
+    for task in tasks:
+        task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await poller
+            await task
 
 
 app = FastAPI(

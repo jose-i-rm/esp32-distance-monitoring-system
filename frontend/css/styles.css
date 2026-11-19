@@ -172,6 +172,12 @@ td.empty { text-align: center; color: var(--muted); padding: 2rem; }
 .camera-photo[hidden] { display: none; }
 .camera-photo img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; border: 1px solid var(--border); background: #000; }
 .camera-photo figcaption { margin-top: 0.25rem; }
+.captures-header { margin-top: 1.25rem; flex-wrap: wrap; gap: 0.5rem; }
+.captures { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
+.capture { margin: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.capture img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000; cursor: zoom-in; }
+.capture .capture-missing { aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; padding: 0.5rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+.capture figcaption { padding: 0.4rem 0.6rem; font-size: 0.8rem; }
 .ptz-pad { display: grid; grid-template-columns: repeat(3, 3rem); gap: 0.4rem; }
 .ptz-pad .btn { height: 3rem; font-size: 1.2rem; padding: 0; }
 .ptz-pad [data-ptz="stop"] { color: var(--danger); }

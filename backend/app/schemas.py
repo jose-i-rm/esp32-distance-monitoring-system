@@ -145,3 +145,31 @@ class StreamResponse(BaseModel):
     type: str
     url: str
     note: str = "URL temporal firmada por Tuya; expira en pocos minutos. No compartir."
+
+
+class RadarCaptureRead(BaseModel):
+    """Foto automática radar -> cámara (sin la imagen; se descarga aparte)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    alert_epoch: int
+    angle_deg: int
+    distance_cm: float
+    previous_cm: float | None = None
+    preset: int | None = None
+    status: str
+    detail: str | None = None
+    has_image: bool = False
+    captured_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def flag_image(cls, data: Any) -> Any:
+        if hasattr(data, "image"):
+            return {**{k: getattr(data, k) for k in cls.model_fields if hasattr(data, k)}, "has_image": bool(data.image)}
+        return data
+
+
+class RadarCaptureList(BaseModel):
+    items: list[RadarCaptureRead]
